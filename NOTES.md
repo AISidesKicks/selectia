@@ -326,9 +326,16 @@ is a legacy loading script. `trec_fine` is fixed by parsing the same 500-item te
 The largest training slices are `custom+iso` (59.5k), `helpsteer2+iso` (49.0k), `json_state+fmt` (48.8k),
 `hate_speech_scales+iso` (45.1k), `custom+fmt` (18.0k) and `routing+fmt` (9.7k).
 
-At the 5200 tokens/s measured on the 1.2B teacher run, 187M tokens is **about 10 hours** on this 4070
-(roughly 9,300 optimizer steps at `max_tokens 12288 --accum 2`). That is the real Phase 3 run, and it is
-ready to start but not started.
+At the 5200 tokens/s measured on the 1.2B teacher run, 187M tokens is **about 10 hours** on this 4070.
+It is running now as `runs/selectia_core`: 8,975 optimizer steps at `max_tokens 12288 --accum 2`, 5,146
+tokens/s, 11.4 GB VRAM, ETA about 11.5 hours.
+
+One thing had to be fixed before it would run. `make_items` kept every token id as a Python list, which
+for 186M tokens is 6 to 7 GB of int objects held for the whole run; the host hit 24 of 31 GB with only
+6 GB free and was climbing about 1.3 GB per minute during tokenization. Storing `ids` as `array('i')`
+instead took the process to a flat 5.5 GB RSS, since `collate` and `batches_by_tokens` only need `len()`
+and a buffer. Worth knowing for any future mixture of this size: the memory is in the token ids, not in
+the weights or the activations.
 
 ## YESMOM: both sizes trained (2026-09-22)
 
