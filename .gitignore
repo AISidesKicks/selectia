@@ -19,3 +19,6 @@ __pycache__/
 # generated data (python -m selectia.data.core / .mixture)
 data/*.pkl
 data/*.jsonl
+
+# training output (checkpoints are GBs; publish them to the Hub, not to git)
+runs/
