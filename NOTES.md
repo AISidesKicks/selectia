@@ -112,6 +112,28 @@ Read that as:
   about 15 h, the full 455M mixture about 53 h, on a 4070-class card. A 4090 has about twice the memory
   bandwidth, so roughly half that.
 
+### An RTX 5090 (32 GB, sm_120) with driver 580.76.05 and CUDA 13.0
+
+Checked against this environment rather than assumed:
+
+- `torch 2.14.0+cu130` reports `torch.cuda.get_arch_list()` = `sm_75, sm_80, sm_86, sm_90, sm_100,
+  sm_120`. **sm_120 is Blackwell**, so this exact wheel runs on a 5090 with no rebuild.
+- `bitsandbytes 0.50.2` ships `libbitsandbytes_cuda130.so` alongside `cuda118` through `cuda132`, so the
+  8-bit optimizer has a CUDA 13.0 binary for that driver.
+- Driver 580.x is the CUDA 13.0 family and Blackwell needs 570 or newer, so 580.76.05 is the right
+  pairing for a `cu130` wheel; Ubuntu 24.04 is fine for the DKMS module.
+- 32 GB changes the batch, not the optimizer choice: the 2.6B with fp32 AdamW needs 32.36 GB of fixed
+  state and would still not fit a 32 GB card, so **8-bit Adam stays mandatory**. With 8-bit Adam the
+  fixed cost is 16.26 GB, leaving about 15 GB of activation budget, which is `max_tokens` around 32k
+  for the 2.6B and 64k for the 1.2B. Memory bandwidth is about 3.5x the 4070's, so expect roughly 3x
+  throughput: staged `core` in about 5 h and the full mixture in about 18 h for the 2.6B.
+
+Two things to verify on the box, because they cannot be checked from here: that `AdamW8bit` steps
+cleanly on sm_120 (the `PagedAdamW8bit` illegal-memory-access above is this bitsandbytes/torch/driver
+combination, so retest rather than assume), and whether `causal_conv1d` has a Blackwell build, since
+without it LFM2's short conv falls back to the reference PyTorch kernel. Also note the 5090 is a 575 W
+card, which is a PSU and cooling decision, not a software one.
+
 What this means for the plan: YESMOM (230M then 350M) trains locally, 230M in about two hours for
 the staged budget and 350M in about three. The full-decision 1.2B and 2.6B runs need a bigger GPU or
 an 8-bit optimizer, which is exactly the trade the educational write-up can show.
