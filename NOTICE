@@ -1,0 +1,13 @@
+NOTICE
+======
+
+Third-party software
+--------------------
+
+This project ports and adapts code from Mapika/decider
+(https://github.com/Mapika/decider), licensed under the Apache License,
+Version 2.0.
+
+Ported material includes the prompt format, the slot readout, the training and
+evaluation loop, the data mixture and the teacher data. Changes made here are
+licensed under Apache-2.0 as part of CODE-LICENSE.

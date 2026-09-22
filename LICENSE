@@ -1,0 +1,36 @@
+Licensing
+=========
+
+This repository contains two kinds of material under two different licenses.
+
+1. Code
+
+   All source code, scripts, configuration and documentation in this repository
+   are licensed under the Apache License, Version 2.0.
+   Full text: CODE-LICENSE
+   SPDX-License-Identifier: Apache-2.0
+
+2. Model derivatives
+
+   Fine-tuned weights derived from the Liquid AI LFM2.5 base models, and any
+   files shipped with them (for example decider_config.json), are licensed under
+   the LFM Open License v1.0.
+   Full text: MODEL-LICENSE
+
+   Note: the LFM Open License v1.0 is not an OSI open-source license. It limits
+   commercial use above a revenue threshold and requires redistributing the
+   license text with the model.
+
+Base models
+-----------
+
+The LFM2.5 base weights are downloaded from Hugging Face
+(LiquidAI/LFM2.5-2.6B-Base, -1.2B-Base, -350M-Base, -230M-Base) and are not
+redistributed as part of this repository's code. Their license travels with
+them; the copy used is MODEL-LICENSE.
+
+Third-party code
+----------------
+
+This project ports and adapts code from Mapika/decider, which is Apache-2.0.
+Its attribution is retained in NOTICE.
