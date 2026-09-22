@@ -246,6 +246,9 @@ def none_augment(e, rng, p, pool=None):
             w = rng.choice(ABSTAIN_WORDINGS)
             if rng.random() < NONE_GOLD_RATE:
                 others = [t for t in pool if t != e.task.split('+')[0]]
+                if not others:                 # a single-task mixture has no foreign labels to distract with
+                    qs.append(q)
+                    continue
                 src = pool[rng.choice(others)]
                 k = min(len(q.options), len(src)); opts = rng.sample(src, k) + [w]
                 qs.append(D.Q(q.text, opts, len(opts) - 1))

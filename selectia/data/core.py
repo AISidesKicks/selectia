@@ -668,14 +668,29 @@ def load_task(name):
     return TASKS[name]["loader"]()
 
 
-def load_all(names=None, verbose=True):
+def _load_one(name):
+    """One task in its own process. Top-level so a process pool can pickle it, and it re-imports the package
+    because a fresh worker has an empty registry."""
+    import selectia.data
+    try:
+        tr, ev = TASKS[name]["loader"]()
+    except Exception as e:
+        return name, None, None, f"{type(e).__name__}: {e}"
+    return name, tr, ev, None
+
+
+def load_all(names=None, verbose=True, jobs=1):
     names = names or list(TASKS)
+    if jobs and jobs > 1:                   # the tasks are independent downloads plus CPU conversion, so they parallelise
+        import concurrent.futures as cf
+        with cf.ProcessPoolExecutor(max_workers=jobs) as pool:
+            results = list(pool.map(_load_one, names))
+    else:
+        results = [_load_one(n) for n in names]
     train, evals = [], {}
-    for n in names:
-        try:
-            tr, ev = load_task(n)
-        except Exception as e:
-            print(f"[data] FAILED {n}: {e}")
+    for n, tr, ev, err in results:
+        if err:
+            print(f"[data] FAILED {n}: {err}")
             continue
         held = TASKS[n]["heldout"]
         if not held:
@@ -691,7 +706,8 @@ if __name__ == "__main__":
     import argparse, pickle, os
     from selectia import data as D                        # registers every task module; pickles under the package name, not __main__
     ap = argparse.ArgumentParser(description="Download and convert the registered tasks into one cache."); ap.add_argument("tasks", nargs="*"); ap.add_argument("--out", default="data/tasks.pkl")
-    a = ap.parse_args(); train, evals = D.load_all(a.tasks or None)
+    ap.add_argument("--jobs", type=int, default=1, help="tasks to download and convert in parallel (network plus CPU bound; 6 is a good default on a 1 Gbit line)")
+    a = ap.parse_args(); train, evals = D.load_all(a.tasks or None, jobs=a.jobs)
     print("total train", len(train), "eval tasks", len(evals), "eval examples", sum(len(v) for v in evals.values()))
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     with open(a.out, "wb") as f:
