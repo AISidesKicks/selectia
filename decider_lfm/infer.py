@@ -53,8 +53,9 @@ class CompiledSchema:
 
 
 class Decider:
-    """use_graphs=True (default on CUDA) routes scoring through decider_lfm.engine.Engine: shape-bucketed
-    CUDA graphs, ~7x lower single-request latency than eager. Set False for CPU or debugging."""
+    """use_graphs=True routes scoring through decider_lfm.engine.Engine (shape-bucketed CUDA graphs, ~7x lower
+    single-request latency than eager); it needs the Phase 5 engine. Eager is the default here, and the only
+    path until that engine is vendored."""
     def __init__(self, path, device="cuda", dtype=torch.bfloat16, temperature=None, abstain_below=0.0, use_graphs=None):
         import json, os
         cfg = {}
@@ -68,9 +69,12 @@ class Decider:
             temperature = float(cfg.get("temperature", 1.0))
         self.neutralize_none = bool(cfg.get("neutralize_none", True))   # v4 and earlier learned the literal string as an abstain signal
         if use_graphs is None:
-            use_graphs = str(device).startswith("cuda")
+            use_graphs = False          # the CUDA-graph engine is Phase 5; the eager readout is the default until then
         if use_graphs:
-            from decider_lfm.engine import Engine
+            try:
+                from decider_lfm.engine import Engine
+            except ImportError as e:
+                raise ImportError("use_graphs=True needs decider_lfm/engine.py, which is not vendored until Phase 5") from e
             self.eng = Engine(path, device=device, dtype=dtype); self.m = self.eng.m
         else:
             self.eng = None; self.m = DecisionModel(path, dtype=dtype, grad_ckpt=False).to(device).eval()
@@ -88,8 +92,8 @@ class Decider:
         assert 2 <= n <= self.max_options, f"2..{self.max_options} options required (tokenizer label capacity)"
         if self.yesmom:
             opts = [str(o).strip().lower() for o in q["options"]]
-            assert n == 2 and opts[0].startswith("no") and opts[1].startswith("yes"), \
-                "yesmom model: exactly one no/yes (noul) question is required"
+            if not (n == 2 and opts[0].startswith("no") and opts[1].startswith("yes")):
+                raise ValueError("yesmom model: exactly one no/yes (noul) question is required")
 
     @torch.no_grad()
     def decide_batch(self, requests, max_ctx_tokens=1536):

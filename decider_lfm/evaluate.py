@@ -82,7 +82,10 @@ if __name__ == "__main__":
         evals = {k: v[:a.limit] for k, v in evals.items()}
     eng = None
     if a.engine:
-        from decider_lfm.engine import Engine
+        try:
+            from decider_lfm.engine import Engine
+        except ImportError as e:
+            raise SystemExit("--engine needs decider_lfm/engine.py, not vendored until Phase 5; use --engine eager") from e
         eng = Engine(a.model, compile=a.engine in ("compile", "fp8"), fp8=a.engine == "fp8", conv_patch=a.engine in ("compile", "fp8"))
         m = eng.m
     else:
