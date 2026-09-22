@@ -3,13 +3,21 @@ NOTICE
 
 Copyright 2026 AISidesKicks.
 
-Third-party software
---------------------
+Credits
+-------
 
-This project ports and adapts code from Mapika/decider
-(https://github.com/Mapika/decider), licensed under the Apache License,
-Version 2.0.
+This project is a fork of decider by Mark Marosi (Mapika):
+https://github.com/Mapika/decider
 
-Ported material includes the prompt format, the slot readout, the training and
-evaluation loop, the data mixture and the teacher data. Changes made here are
-licensed under Apache-2.0 as part of CODE-LICENSE.
+decider is the original "System One" recipe we build on here, and most of what
+makes it work - the prompt format, the one-pass slot readout, the data mixture,
+the training and evaluation loop, and the shipped teacher data - comes from that
+project. Thanks to Mapika for putting it out in the open.
+
+Everything we change or add stays on the same terms: Apache-2.0, see
+CODE-LICENSE. The upstream project is Apache-2.0 as well, so this remains a real
+fork, not a relicense.
+
+Scope note: this covers code only. Fine-tuned weights are model derivatives of
+the Liquid AI LFM2.5 bases and fall under the LFM Open License v1.0
+(MODEL-LICENSE).

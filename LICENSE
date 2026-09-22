@@ -29,11 +29,11 @@ The LFM2.5 base weights are downloaded from Hugging Face
 redistributed as part of this repository's code. Their license travels with
 them; the copy used is MODEL-LICENSE.
 
-Third-party code
-----------------
+Fork and attribution
+--------------------
 
-This project ports and adapts code from Mapika/decider, which is Apache-2.0.
-Its attribution is retained in NOTICE.
+This project is a fork of Mapika/decider, which is Apache-2.0. Credit to the
+upstream project and its author is in NOTICE.
 
 Copyright
 ---------
