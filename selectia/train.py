@@ -16,10 +16,15 @@ from selectia.data.augment import none_augment, build_label_pool
 
 
 def make_items(train, tok, rng, max_ctx, none_prob=0.0, max_options=10, schema_first_prob=0.0):
+    from array import array
     items = []; pool = build_label_pool(train) if none_prob > 0 else None
     for i, e in enumerate(train):
         it = build(none_augment(e, rng, none_prob, pool), tok, rng, max_options=max_options, max_ctx_tokens=max_ctx,
                    layout="schema_first" if rng.random() < schema_first_prob else "state_first"); it["task"] = e.task; it["ex_id"] = i
+        # 4 bytes per token id instead of a ~36-byte int object each. The staged core mixture is ~186M tokens, which
+        # as Python lists is 6-7 GB held for the whole run; as array('i') it is under 1 GB. `collate` and
+        # `batches_by_tokens` only call len() and torch.tensor() on this, both of which take a buffer.
+        it["ids"] = array("i", it["ids"])
         items.append(it)
     return items
 
