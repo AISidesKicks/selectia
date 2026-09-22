@@ -1,0 +1,17 @@
+[workspace]
+authors = ["AISidesKicks <198066858+AISidesKicks@users.noreply.github.com>"]
+channels = ["conda-forge"]
+name = "sclt"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[activation]
+
+[activation.env]
+TMPDIR = "/run/user/$UID/pixi_tmp/$PIXI_PROJECT_NAME"
+SCRATCH = "$PIXI_PROJECT_ROOT/scratch"
+
+[tasks]
+
+[dependencies]
+python = "==3.12"

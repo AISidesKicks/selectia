@@ -1,0 +1,13 @@
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# scratch disk (persists through crashes, never committed)
+scratch/*
+!scratch/.gitkeep
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
