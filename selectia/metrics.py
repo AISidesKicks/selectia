@@ -32,6 +32,13 @@ def summarize(probs, golds, nopts):
     nll = -np.log(np.clip(p_gold, 1e-12, 1)).mean()
     onehot = np.zeros_like(probs); onehot[np.arange(len(golds)), golds] = 1
     brier = ((probs - onehot) ** 2).sum(1).mean()
+    # `chance` is 1/nopts, which is only the trivial baseline when the classes are balanced. The isolated
+    # verifier rows that YESMOM trains on propose the right option once and a wrong one K-1 times, so their
+    # eval sets run about 3:1 towards "no" and a majority-class guess beats 1/2. Report that rate too, plus
+    # balanced accuracy (mean per-class recall), which is the number to quote for those sets.
+    cls, cnt = np.unique(golds, return_counts=True)
+    majority = float(cnt.max() / cnt.sum())
+    bal = float(np.mean([correct[golds == c].mean() for c in cls]))
     return dict(n=int(len(golds)), acc=float(correct.mean()), nll=float(nll), brier=float(brier), ece=ece(conf, correct),
                 aurc=aurc(conf, correct), acc_at_80=sel_acc(conf, correct, 0.8), acc_at_50=sel_acc(conf, correct, 0.5),
-                chance=float((1.0 / nopts).mean()), mean_conf=float(conf.mean()))
+                chance=float((1.0 / nopts).mean()), majority=majority, bal_acc=bal, mean_conf=float(conf.mean()))

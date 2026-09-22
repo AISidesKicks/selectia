@@ -46,7 +46,10 @@ def run_eval(model, evals, bs=32, max_ctx=1536, temperature=1.0, log=print, engi
             s["per_q"] = [summarize(P[ok & (QI == k)], G[ok & (QI == k)], NO[ok & (QI == k)])["acc"] for k in range(QI.max() + 1)]
         results[tname] = s
         dump[tname] = dict(probs=P, golds=G, nopts=NO, qidx=QI)
-        log(f"[eval] {tname:20s} n={s['n']:5d} acc={s['acc']:.3f} (chance {s['chance']:.2f}) nll={s['nll']:.3f} brier={s['brier']:.3f} ece={s['ece']:.3f} aurc={s['aurc']:.3f} acc@80={s['acc_at_80']:.3f} {'HELDOUT' if s['heldout'] else ''}")
+        log(f"[eval] {tname:20s} n={s['n']:5d} acc={s['acc']:.3f} bal={s.get('bal_acc', float('nan')):.3f} "
+            f"(chance {s['chance']:.2f}, majority {s.get('majority', float('nan')):.2f}) nll={s['nll']:.3f} "
+            f"brier={s['brier']:.3f} ece={s['ece']:.3f} aurc={s['aurc']:.3f} acc@80={s['acc_at_80']:.3f} "
+            f"{'HELDOUT' if s['heldout'] else ''}")
     return results, dump
 
 
@@ -55,7 +58,7 @@ def aggregate(results):
         rs = [results[k] for k in keys if k in results]
         if not rs:
             return {}
-        return {m: float(np.mean([r[m] for r in rs])) for m in ["acc", "nll", "brier", "ece", "aurc", "acc_at_80", "chance"]}
+        return {m: float(np.mean([r[m] for r in rs])) for m in ["acc", "nll", "brier", "ece", "aurc", "acc_at_80", "chance", "majority", "bal_acc"]}
     tr = [k for k, v in results.items() if not v["heldout"]]; ho = [k for k, v in results.items() if v["heldout"]]
     return dict(in_task=agg(tr), heldout=agg(ho), n_in=len(tr), n_heldout=len(ho))
 
