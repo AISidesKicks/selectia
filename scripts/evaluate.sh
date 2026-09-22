@@ -8,7 +8,7 @@ DATA=${DATA:-$(ls data/mixture_*.pkl | head -1)}                       # its eva
 [ -f "$M/selectia_config.json" ] || echo '{"temperature": 1.0, "version": "dev", "max_options": 255, "schema_first": false, "isolated_levels": true}' > "$M/selectia_config.json"
 for L in state_first schema_first; do
   $PY -m selectia.evaluate --model "$M" --data "$DATA" --out "$R/regression_$L" --bs 32 --layout $L
-  $PY -m selectia.evaluate --model "$M" --data data/probes.pkl --out "$R/probes_$L" --max_options 255 --max_ctx 1536 --bs 16 --layout $L
+  $PY -m selectia.evaluate --model "$M" --data "${PROBES:-data/probes.pkl}" --out "$R/probes_$L" --max_options 255 --max_ctx 1536 --bs 16 --layout $L
   $PY -m selectia.probes.isolated "$M" --layout $L --out "$R/isolated_$L.json"
 done
 $PY -m selectia.report "$R/regression_state_first"                  # fits the temperature on in-task data; put it into selectia_config.json

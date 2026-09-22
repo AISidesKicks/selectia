@@ -215,10 +215,10 @@ def yesmom_sets(train, evals, recs, rng):
         out["verifier"] += isolated(e, q, "verifier+iso")
     for r in recs:
         if r["domain"] in HELD_DOMAINS: continue
-        ex = to_example(r, D, S1, "noul+fmt")
+        ex = to_example(r, D, S1, "teacher+fmt")
         for q, m in zip(ex.qs, r["questions"]):
             if m.get("type") == "noul" and is_noul_q(q) and q.gold >= 0:
-                out["teacher"].append(D.Example(ex.context, [q], "noul+fmt"))
+                out["teacher"].append(D.Example(ex.context, [q], "teacher+fmt"))
     a, o = abstention_probes(evals, random.Random(7))
     for e in a + o:
         out["abstain"] += isolated(e, e.qs[0], "abstain+iso") * YMIX["abstain_repeat"]
