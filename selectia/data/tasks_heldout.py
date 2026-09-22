@@ -47,9 +47,19 @@ TREC_FINE = {"ABBR:abb": "an abbreviation", "ABBR:exp": "the expansion of an abb
 
 @task("trec_fine", heldout=True)
 def _trecf():
-    ds = _ld("CogComp/trec", split="test"); raw = ds.features["fine_label"].names
-    names = [TREC_FINE[n] for n in raw]
-    return [], _cls(ds, lambda r: r["text"], lambda r: int(r["fine_label"]), "What kind of answer is this question asking for?", names, "trec_fine", EVAL_CAP)
+    """The 50-class TREC question test set, parsed from the raw label file. The Hub copy (`CogComp/trec`) is a
+    legacy loading script, which current `datasets` refuses to run ("Dataset scripts are no longer supported");
+    `SetFit/TREC-QC` ships the same 500-item test file as `TREC_10.label`. Options are in sorted label order,
+    which is the order a `ClassLabel` would expose."""
+    from huggingface_hub import hf_hub_download
+    raw = sorted(TREC_FINE); idx = {r: i for i, r in enumerate(raw)}; names = [TREC_FINE[r] for r in raw]
+    path = hf_hub_download("SetFit/TREC-QC", "TREC_10.label", repo_type="dataset")
+    out = []
+    for line in open(path, encoding="latin-1"):
+        lab, _, text = line.strip().partition(" ")
+        if lab in idx and text.strip():
+            out.append(Example(text.strip(), [Q("What kind of answer is this question asking for?", list(names), idx[lab])], "trec_fine"))
+    return [], out
 
 
 @task("quality_full", heldout=True)
