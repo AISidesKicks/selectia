@@ -307,6 +307,29 @@ worth removing before quoting the delta as pure training gain. It is a partial m
 no public tasks, no rules, no contrastive), it is not published, and `decider-2b`'s hard figure is on the
 full 220-item tier while ours is the 111 public items.
 
+## The staged core mixture is built (2026-09-22)
+
+`python -m selectia.data.core --jobs 6` finished in about 9 minutes with 6 workers plus Xet transfer:
+`data/tasks.pkl`, 787 MB, **968,970 train examples across 97 eval tasks** (120,424 eval examples). Two
+of the 99 registry entries did not build: `games` needs `data/mario.pkl` that is not shipped, and
+`trec_fine` died with "Dataset scripts are no longer supported, but found trec.py" because `CogComp/trec`
+is a legacy loading script. `trec_fine` is fixed by parsing the same 500-item test set from
+`SetFit/TREC-QC`'s raw `TREC_10.label`, which is script-free.
+
+`python -m selectia.data.mixture --mode core` then produced:
+
+| artifact | contents |
+|---|---|
+| `data/mixture_core.pkl` | 695,795 train examples, ~187M tokens (sampled estimate), 97 eval sets |
+| `data/probes.pkl` | 73 probe sets, 35,296 examples (loaded as `({}, sets)`, the same shape as a mixture) |
+
+The largest training slices are `custom+iso` (59.5k), `helpsteer2+iso` (49.0k), `json_state+fmt` (48.8k),
+`hate_speech_scales+iso` (45.1k), `custom+fmt` (18.0k) and `routing+fmt` (9.7k).
+
+At the 5200 tokens/s measured on the 1.2B teacher run, 187M tokens is **about 10 hours** on this 4070
+(roughly 9,300 optimizer steps at `max_tokens 12288 --accum 2`). That is the real Phase 3 run, and it is
+ready to start but not started.
+
 ## What is validated so far
 
 - `pytest tests` passes (19 tests): the request/answer layer, the rule data, the prompt layouts and the
