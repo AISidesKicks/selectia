@@ -221,6 +221,9 @@ def main():
     ap.add_argument("--src", default="scratch/jevbench-src", help="clone of fstandhartinger/jevbench")
     ap.add_argument("--models", nargs="+", required=True)
     ap.add_argument("--tiers", default=",".join(TIERS))
+    ap.add_argument("--types", default="", help="comma-separated question types to run (choice,noul,score). "
+                                                "A YESMOM model only accepts noul, and 74 of the 231 public items are noul, "
+                                                "so pass noul and compare against the bases on the same subset.")
     ap.add_argument("--order", default="labels", choices=["labels", "criteria"])
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--dtype", default="bfloat16", choices=["bfloat16", "float32", "float16"])
@@ -233,6 +236,10 @@ def main():
     Task, score_task, metric, summarize = load_jevbench(a.src)
     tiers = a.tiers.split(",")
     rows = load_tasks(a.src, tiers)
+    if a.types:
+        want = set(a.types.split(","))
+        rows = [r for r in rows if r["question"]["type"] in want]
+        print(f"[data] filtered to types {sorted(want)}", flush=True)
     rows = [dict(r, _gold=str(r["expected"])) for r in rows]        # score levels score as their index string
     tasks = [Task(id=r["id"], family=r["family"], state=r["state"], question=r["question"], labels=r["labels"],
                   expected=r["expected"], split=r["split"], group=r.get("group"), provenance=r.get("provenance") or {})

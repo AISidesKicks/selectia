@@ -330,6 +330,87 @@ At the 5200 tokens/s measured on the 1.2B teacher run, 187M tokens is **about 10
 (roughly 9,300 optimizer steps at `max_tokens 12288 --accum 2`). That is the real Phase 3 run, and it is
 ready to start but not started.
 
+## YESMOM: both sizes trained (2026-09-22)
+
+The Noul-only binary head, trained on `data/mixture_yesmom.pkl` (279,032 rows, 38.9M tokens, balanced
+139,516 yes / 139,516 no). One epoch, 1,427 optimizer steps, lr 1e-5 with 200-step warmup,
+`max_tokens 16384 --accum 2`, gradient checkpointing, fp32 AdamW, `--max_options 2 --yesmom`. Both
+checkpoints write `"yesmom": true`, `"max_options": 2`, `"isolated_levels": false`.
+
+| model | wall clock | throughput | peak VRAM |
+|---|---|---|---|
+| `yesmom-230m` | about 35 min | 21,000 tok/s | 4 GB |
+| `yesmom-350m` | about 47 min | 14,100 tok/s | 5 GB |
+
+### JevBench, Noul items only
+
+A YESMOM model rejects anything that is not a Noul question, and only **74 of JevBench's 231 public items
+are Noul** (139 are Choice, 18 Score). So the only fair comparison is on those 74, with the bases scored
+on the same subset:
+
+| model | acc | Brier | ECE |
+|---|---|---|---|
+| LFM2.5-230M-Base | 0.527 | 0.738 | 0.383 |
+| **yesmom-230m** | 0.473 | **0.557** | **0.179** |
+| LFM2.5-350M-Base | 0.514 | 0.623 | 0.221 |
+| **yesmom-350m** | 0.446 | **0.554** | **0.151** |
+| LFM2.5-1.2B-Base | 0.568 | 0.540 | 0.149 |
+| LFM2.5-2.6B-Base | 0.581 | 0.690 | 0.318 |
+| selectia-1.2b-teacher | 0.635 | 0.666 | 0.289 |
+
+Read this carefully: **n = 74, so accuracy carries a 95% interval of about plus or minus 0.11.** Every
+accuracy in that column is statistically indistinguishable from every other. The one thing that is not
+noise is calibration: Brier falls for both models against their own bases (0.738 to 0.557, 0.623 to
+0.554) and ECE more than halves (0.383 to 0.179, 0.221 to 0.151). The binary fine-tune sharpened the
+Noul head without moving measurable accuracy on 74 items. Do not quote the accuracy column as a win.
+
+### The YESMOM regression sets, where the signal actually is
+
+The mixture's own eval half is 19 Noul sets, several with thousands of items, so these are not
+noise-limited. Balanced accuracy equals accuracy on every set (majority class 0.50 to 0.53), so neither
+model is exploiting the class skew.
+
+| set | n | yesmom-230m | yesmom-350m |
+|---|---|---|---|
+| `abstain_binary` | 12,666 | 0.720 | **0.841** |
+| `offtopic_binary` | 11,013 | 0.673 | **0.838** |
+| `counterfactual` | 1,500 | 0.902 | 0.902 |
+| `toxic_chat` | 3,000 | 0.957 | 0.955 |
+| `civil_comments` | 7,500 | 0.775 | **0.846** |
+| `qqp` | 1,500 | 0.563 | **0.706** |
+| `mrpc` | 408 | 0.684 | 0.684 |
+| `boolq` | 1,500 | 0.632 | 0.631 |
+| `custom_noul` | 1,077 | 0.524 | **0.602** |
+| `multirc` | 1,500 | 0.462 | **0.574** |
+| `ade` (held out) | 1,500 | 0.565 | **0.655** |
+| `strategyqa` (held out) | 687 | 0.489 | 0.518 |
+| `synth` | 150 | 0.560 | 0.567 |
+| `wiki_qa` | 879 | 0.496 | 0.485 |
+| `wic` | 638 | 0.500 | 0.500 |
+| `msmarco_rel` | 1,446 | 0.488 | 0.488 |
+| `tweet_hate` | 1,500 | 0.447 | 0.456 |
+| `paws` (held out) | 1,500 | 0.439 | 0.439 |
+
+Three things fall out of this:
+
+- **The two gates that are the product both improve a lot with size**: abstain 0.720 to 0.841 and
+  off-topic 0.673 to 0.838, on 12k and 11k items. With ECE 0.068 and 0.049 respectively, the binary head
+  is well calibrated exactly where a gate has to be. This is the number worth publishing for YESMOM.
+- **Counterfactual (0.902) and toxic_chat (0.955 to 0.957) are near solved**, and civil_comments improves
+  0.775 to 0.846.
+- **A cluster sits at or below chance for both sizes**: `paws` 0.439, `tweet_hate` 0.45, `wic` 0.500,
+  `msmarco_rel` 0.488, `wiki_qa` 0.49. These are the same-meaning and hateful-nuance judgements. Since
+  both sizes fail them identically, they are not size-limited at 230M to 350M; they are shape-limited.
+  The training data teaches the verifier shape ("does the proposed answer fit?"), and these eval sets ask
+  a direct question about the state instead.
+
+### Runtime contract
+
+Validated on both checkpoints: a `bool` schema and a plain `no`/`yes` question are accepted, and a
+non-Noul 2-option question, a `choice` schema, and a 3-option question are all rejected with `ValueError`.
+The `yesmom: true` flag is what enforces this, which is why the training run needs `--yesmom`; without it
+the head is still binary but the runtime would offer it multi-option questions.
+
 ## What is validated so far
 
 - `pytest tests` passes (19 tests): the request/answer layer, the rule data, the prompt layouts and the

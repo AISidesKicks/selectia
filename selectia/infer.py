@@ -81,7 +81,8 @@ class Selectia:
         self.dev = device; self.T = temperature; self.abstain_below = abstain_below
         self.yesmom = bool(cfg.get("yesmom", False))                  # YESMOM: Noul-only binary head, no Choice/Score
         self.max_options = min(MAX_OPTIONS, label_capacity(self.m.tok))  # tokenizer capacity, not the constant
-        self.name = ("yesmom-" if self.yesmom else "selectia-") + str(cfg.get("version", "dev"))
+        ver = str(cfg.get("version", "dev")); prefix = "yesmom-" if self.yesmom else "selectia-"
+        self.name = ver if ver.startswith(prefix) else prefix + ver          # a version may already carry the prefix
         self.schema_first = bool(cfg.get("schema_first", False)) and self.eng is not None      # default layout. Questions-first (the cacheable one) costs accuracy
         self.T_schema = float(cfg.get("temperature_schema_first", temperature))                # (about 1.5 points on fixed label sets, more elsewhere): opt in with schema()
         self.isolated_levels = bool(cfg.get("isolated_levels", False))      # Score levels judged one per row (v8+)

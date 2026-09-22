@@ -174,6 +174,29 @@ Accuracy roughly doubles and the easy tier becomes perfect, but **hard-tier cali
 hard-tier accuracy improves**: the model learns to be confident on the shapes it saw. That gap is the
 argument for the held-out calibration gate in `plans/INTEND.md`.
 
+### YESMOM, both sizes trained
+
+`yesmom-230m` (35 min) and `yesmom-350m` (47 min) on 38.9M tokens of balanced Noul data. The two gates
+that are the product, on thousands of items each:
+
+| Noul regression set | n | yesmom-230m | yesmom-350m |
+|---|---|---|---|
+| abstain (is an abstain wording right?) | 12,666 | 0.720 | **0.841** |
+| off-topic (is a foreign label right?) | 11,013 | 0.673 | **0.838** |
+| counterfactual | 1,500 | 0.902 | 0.902 |
+| toxic_chat | 3,000 | 0.957 | 0.955 |
+| civil_comments | 7,500 | 0.775 | **0.846** |
+| custom_noul | 1,077 | 0.524 | **0.602** |
+
+On JevBench only 74 of the 231 public items are Noul, and a YESMOM model rejects the rest, so the
+comparable subset is small enough that accuracy is noise (plus or minus 0.11 at n=74). There, calibration
+is the finding: ECE falls from 0.383 to 0.179 for the 230M and 0.221 to 0.151 for the 350M against their
+own bases, with no measurable accuracy change. The gates above are where the real signal is.
+
+A cluster stays at or below chance for both sizes: `paws` 0.439, `tweet_hate` 0.45, `wic` 0.500,
+`msmarco_rel` 0.488. Those are shape-limited rather than size-limited, since 230M and 350M fail them
+identically.
+
 Full tables, per-family breakdowns, option-order sensitivity and the latency and token numbers are in
 `NOTES.md`.
 
