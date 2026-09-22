@@ -1,4 +1,4 @@
-# INTEND: decider-style one-pass typed decisions on LFM2.5 (2.6B / 1.2B / 350M / 230M)
+# INTEND: selectia - one-pass typed decisions on LFM2.5 (2.6B / 1.2B / 350M / 230M)
 
 ## Goal
 
@@ -73,7 +73,7 @@ Fork decider's tokenizer-agnostic pieces rather than rewriting. Everything below
 - Smoke test `slot_logits`: one `Example` -> logits `[N, MAX_OPTIONS]`, mask invalid options; and a Noul-only smoke test for the two small bases.
 - **Exit criteria:** all four models load, readout produces finite logits, label capacity recorded.
 
-### Phase 1 - Generalize the decider modules
+### Phase 1 - Generalize the ported modules
 
 - Vendor: `prompt.py`, `model.py`, `systemone.py`, `infer.py`, `evaluate.py`, `report.py`, `data/` (registry, `augment.py`, `mixture.py`, teacher generators), `probes/`, `bench/public_suite.py`, `tests/`.
 - `model.py`: keep `slot_logits` unchanged; make `grad_ckpt` conditional; add a tied-embedding assertion; keep letter buffer registration.
@@ -101,7 +101,7 @@ Fork decider's tokenizer-agnostic pieces rather than rewriting. Everything below
 - Reuse `train.py` unchanged except `--model`, grad-ckpt handling, and device/bucket sizing.
 - Hyperparameters: AdamW, `lr=1e-5`, `wd=0`, `betas=(0.9,0.95)`, 200 warmup + cosine, `max_tokens=16384`, `accum=2`, `brier_w=0`, `label_smooth=0`, `none_prob` augmentation on, `schema_first_prob=0.5` (so the cacheable layout is trained even though state-first stays default).
 - Full fine-tune both backbones; 2.6B needs gradient checkpointing and ~80GB-class memory or sharding; 1.2B is lighter.
-- Save `model/` + `decider_config.json` (`temperature`, `isolated_levels`, `schema_first`, `version`), plus `hist.json` and per-step CE/eval logs.
+- Save `model/` + `selectia_config.json` (`temperature`, `isolated_levels`, `schema_first`, `version`), plus `hist.json` and per-step CE/eval logs.
 - **Exit criteria:** in-task ECE < 0.06 after temperature fit; held-out accuracy clearly above base-model zero-shot.
 
 **YESMOM (350M, 230M):**
@@ -109,7 +109,7 @@ Fork decider's tokenizer-agnostic pieces rather than rewriting. Everything below
 - Same `train.py`, same readout, but `max_options`/label path irrelevant; the only question type is `noul`. `schema_first_prob` can be 0 (state-first is fine; the prompt is short).
 - Smaller budgets: these fit on a single modest GPU and train in a fraction of the time. Higher LR is usually tolerable at this scale; start at the same `1e-5` and sweep `{3e-5, 1e-5, 3e-6}` on the 230M first.
 - Do **not** add a Brier term initially; a single fitted temperature on in-task Noul data is the calibration control.
-- Save `decider_config.json` with a `yesmom: true` flag so the runtime exposes only the binary head.
+- Save `selectia_config.json` with a `yesmom: true` flag so the runtime exposes only the binary head.
 - **Exit criteria:** held-out Noul accuracy clearly above the base model zero-shot; post-temperature ECE < 0.05.
 
 ### Phase 4 - Evaluation
@@ -132,14 +132,14 @@ Fork decider's tokenizer-agnostic pieces rather than rewriting. Everything below
 
 ### Phase 6 - Release
 
-- Port `scripts/stage_release.py` / `upload_hf.py`; publish `decider-lfm25-2.6b`, `decider-lfm25-1.2b`, `yesmom-350m`, `yesmom-230m` with model cards stating the LFM Open License v1.0 and the measured calibration.
+- Port `scripts/stage_release.py` / `upload_hf.py`; publish `selectia-2.6b`, `selectia-1.2b`, `selectia-yesmom-350m`, `selectia-yesmom-230m` with model cards stating the LFM Open License v1.0 and the measured calibration.
 - Include the tokenizer probe result and `MAX_OPTIONS` used (full models); note YESMOM is Noul-only.
 
 ## Proposed repository layout
 
 ```
 INTEND.md                      this plan
-decider_lfm/
+selectia/
   prompt.py model.py systemone.py infer.py train.py evaluate.py report.py
   data/  probes/  bench/  serve.py
 scripts/  train.sh evaluate.sh serve.sh stage_release.sh
@@ -191,7 +191,7 @@ Actionable companion to the intent above. Derived from the planning handover plu
 ## A. Bootstrap: pixi env, docker isolation, scratch dirs
 
 Repo state before work: `CODE-LICENSE`, `MODEL-LICENSE`, `LICENSE`, `NOTICE`, `pixi.toml`, `pixi.lock`, `plans/`.
-No vendored decider code yet. The implementation session needs permissions to clone, to add pixi dependencies,
+No vendored upstream code yet. The implementation session needs permissions to clone, to add pixi dependencies,
 and to run docker under the project prefix.
 
 ### Interpreter and Python env (pixi, per AGENTS.md)
@@ -235,7 +235,7 @@ and to run docker under the project prefix.
   `[activation.env]`. Run `mkdir -p "$TMPDIR"` before first use.
 - Deliberate name split: pixi workspace `sclt` vs docker prefix `slct-`. Keep as is, do not "fix" one to match.
 
-Vendor into `decider_lfm/`:
+Vendor into `selectia/`:
 - core: `prompt.py model.py systemone.py infer.py evaluate.py report.py metrics.py card_table.py train.py`
 - data: `data/{__init__,core,mixture,rules,augment,tasks_agents,tasks_extended,tasks_heldout,teacher_contrastive,teacher_labels,teacher_questions,teacher_situations}.py`
 - `probes/`, `bench/public_suite.py`, `tests/{test_prompt,test_rules,test_systemone}.py`, shipped `teacher_data/`, adapted `scripts/`
@@ -244,7 +244,7 @@ Vendor into `decider_lfm/`:
 
 ## B. File-level changes (the actual port)
 
-**`decider_lfm/prompt.py`**
+**`selectia/prompt.py`**
 - `label_table` ends with `assert len(out) == MAX_OPTIONS and len({...}) == MAX_OPTIONS`, which hard-fails on
   the 65536-vocab tokenizers. Replace with: collect all single-token labels, `assert len(out) >= WIDE_MIN` (11),
   `assert len({i for _, i in out}) == len(out)`, return the **actual** capacity (do not pad to 255).
@@ -255,7 +255,7 @@ Vendor into `decider_lfm/`:
   only the wide path needs real single-token labels.
 - Add `label_capacity(tok)`; cache is keyed by `id(tok)` — never share across sizes (2.6B 128k vocab vs other three 65536).
 
-**`decider_lfm/model.py`**
+**`selectia/model.py`**
 - `slot_logits`: use `torch.arange(W.shape[0])` for the mask width (`W = self.lm.lm_head.weight[self.letters]`),
   removing the global-constant coupling.
 - `grad_ckpt=True` is unconditional today -> default `False`; enable only for 2.6B, and test on it separately.
@@ -263,14 +263,14 @@ Vendor into `decider_lfm/`:
 - Phase 0 must confirm `hasattr(self.lm, "model")` and `hasattr(self.lm, "lm_head")` on `Lfm2ForCausalLM`.
 - `collate` unchanged.
 
-**`decider_lfm/train.py`**
+**`selectia/train.py`**
 - Add `--grad_ckpt` (default False), `--max_options` (default probed capacity), `--device`, `--yesmom`.
-- **Write `decider_config.json` into `out/model`** at save time. Upstream `train.py` saves only LM+tokenizer and
-  never writes it, but `Decider` reads temperature/flags only from that file — it is the runtime contract.
+- **Write `selectia_config.json` into `out/model`** at save time. Upstream `train.py` saves only LM+tokenizer and
+  never writes it, but `Selectia` reads temperature/flags only from that file — it is the runtime contract.
   Full models: `temperature`, `isolated_levels`, `schema_first`, `version`; YESMOM adds `yesmom: true`.
 - Keep loss/schedule exactly (CE over `golds>=0`, AdamW `(0.9,0.95)`, clip 1.0, warmup+cosine, `brier_w=0`).
 
-**`decider_lfm/infer.py`**
+**`selectia/infer.py`**
 - Eager path is default (`use_graphs=False`); guard `engine`/`schema_engine` imports so the port runs before Phase 5.
 - Replace `MAX_OPTIONS` validation with `label_capacity(tok)`; honor `cfg["yesmom"]` (expose only `noul`).
 - Keep `neutralize_options` (literal `"none of the above"` -> `"not listed here"`).
@@ -291,8 +291,8 @@ Record capacity per tokenizer; it fixes `--max_options` for the 1.2B/2.6B runs.
 
 ## D. Data
 
-- Full: `python -m decider_lfm.data.core --out data/tasks.pkl` then
-  `python -m decider_lfm.data.mixture --base data/tasks.pkl --mode full ...` (mirrors `scripts/train.sh full`;
+- Full: `python -m selectia.data.core --out data/tasks.pkl` then
+  `python -m selectia.data.mixture --base data/tasks.pkl --mode full ...` (mirrors `scripts/train.sh full`;
   `core.py` downloads ~95 public datasets — network/disk heavy, cache it).
 - Staged milestone (recommended): `mixture.py` only has `full`/`delta`, so **add a `core` mode** (routing/choice/
   score/noul, custom questions, abstain augmentation, described options, JSON states, isolated levels) and a
@@ -305,7 +305,7 @@ Record capacity per tokenizer; it fixes `--max_options` for the 1.2B/2.6B runs.
 Full (2.6B / 1.2B) — upstream `train.sh` uses `--max_ctx 16384`; this plan keeps 1536 for memory:
 
 ```
-python -m decider_lfm.train --model LiquidAI/LFM2.5-2.6B-Base \
+python -m selectia.train --model LiquidAI/LFM2.5-2.6B-Base \
   --data data/mixture_core.pkl --out runs/full_2.6b \
   --epochs 1 --lr 1e-5 --warmup 200 --max_tokens 16384 --accum 2 \
   --max_ctx 1536 --max_options <capacity> --none_prob 0.1 --schema_first_prob 0.5 \
@@ -318,7 +318,7 @@ YESMOM (230M first, then 350M): same but `--model ...-230M-Base --yesmom --schem
 ## F. Gates
 
 As in the intent section, plus: tokenizer-probe assertions, determinism/reordering-independence check, a smoke
-step on `--train_cap 2000` before any long run, and a `decider_config.json` presence check before eval.
+step on `--train_cap 2000` before any long run, and a `selectia_config.json` presence check before eval.
 
 ## G. Updated risk table
 
@@ -358,7 +358,7 @@ Licensing
    Full text: CODE-LICENSE     SPDX-License-Identifier: Apache-2.0
 
 2. Model derivatives of the Liquid AI LFM2.5 base models (fine-tuned weights and
-   any files shipped with them, e.g. decider_config.json) are licensed under the
+   any files shipped with them, e.g. selectia_config.json) are licensed under the
    LFM Open License v1.0.
    Full text: MODEL-LICENSE
    The LFM Open License v1.0 is not an OSI open-source license: it limits

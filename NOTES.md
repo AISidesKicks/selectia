@@ -7,7 +7,7 @@ experiments on small (under 500M) LFM2.5 models.
 
 That is, instead of getting a model to generate a "yes" or "no" token, read the logits for the
 `yes` / `no` tokens directly at a fixed prompt slot and use their ratio as a calibrated
-probability. The decider recipe (see `plans/INTEND.md`) generalizes that readout from two tokens
+probability. The System One recipe (see `plans/INTEND.md`) generalizes that readout from two tokens
 to the full typed-decision label set, and YESMOM narrows it back to the binary head for the
 350M / 230M LFM2.5 bases.
 
@@ -68,7 +68,7 @@ What this means for the plan: YESMOM (230M then 350M) trains locally, 230M in ab
 the staged budget and 350M in about three. The full-decision 1.2B and 2.6B runs need a bigger GPU or
 an 8-bit optimizer, which is exactly the trade the educational write-up can show.
 
-Not measured: the tokenization pass over the real mixture and the `decider_lfm.data.core` download
+Not measured: the tokenization pass over the real mixture and the `selectia.data.core` download
 (~95 public datasets). Both are one-off and need `data/tasks.pkl` first.
 
 ## What is validated so far
@@ -76,7 +76,7 @@ Not measured: the tokenization pass over the real mixture and the `decider_lfm.d
 - `pytest tests` passes (19 tests): the request/answer layer, the rule data, the prompt layouts and the
   label-capacity assertions, all against the real LFM2.5 tokenizers.
 - Two smoke runs on the 230M base, one full-decision and one `--yesmom`, each complete a real
-  optimizer loop, save the weights and write `decider_config.json` (`yesmom: true` and
+  optimizer loop, save the weights and write `selectia_config.json` (`yesmom: true` and
   `isolated_levels: false` for the binary model, `isolated_levels: true` otherwise).
 - Both runtime contracts load from the saved folder: the full model answers a Choice plus a Noul
   question, the YESMOM model returns `{"noul": p}` and rejects a Choice question.
