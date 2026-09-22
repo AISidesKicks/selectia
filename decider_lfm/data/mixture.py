@@ -1,6 +1,6 @@
 """The training mixture and the probes, in one place.
 
-    python -m decider_lfm.data.mixture [--base data/tasks.pkl] [--out data/mixture.pkl] [--probes data/probes.pkl] [--mode full|delta]
+    python -m decider_lfm.data.mixture [--base data/tasks.pkl] [--out data/mixture.pkl] [--probes data/probes.pkl] [--mode full|core|yesmom|delta]
 
 `--base` is the converted-task cache from `python -m decider_lfm.data.core` (plain examples, ~1M).  On top of it (counts in MIX):
 
@@ -19,9 +19,15 @@
   rules       rule-conditioned decisions over JSON records, every example with a state twin and a rule twin whose label flips
               (decider_lfm.data.rules: programmatic, exact labels; three domains and two rule families held out for the probes)
 
-mode=full  is the single-run recipe: train Qwen3.5-2B-Base on it for one epoch (scripts/train.sh).
-mode=delta keeps only a replay sample of `general`; it is what a continuation from an existing decider checkpoint uses
-           (the released weights were produced this way, in stages; see docs/HISTORY.md).
+mode=full   is the single-run recipe: train Qwen3.5-2B-Base on it for one epoch (scripts/train.sh).
+mode=core   is the staged LFM2.5 milestone: the core decision formats (described options, JSON states, single-question and
+            isolated rows, teacher custom/routing/commands) plus a capped `general` sample; no wide/padded label sets, no
+            rules, no contrastive.  About 100-150M tokens, the first model worth evaluating.  New here, not upstream.
+mode=yesmom is Noul-only (state + one no/yes question per forward pass) for the 350M/230M bases: the native no/yes tasks,
+            isolated "does the proposed answer fit?" rows, teacher-written noul questions and the binary abstain/off-topic
+            rows, balanced 50/50 on yes/no.  New here, not upstream.
+mode=delta  keeps only a replay sample of `general`; it is what a continuation from an existing decider checkpoint uses
+            (the released weights were produced this way, in stages; see docs/HISTORY.md).
 Abstain options are added at train time (decider_lfm.data.augment.none_augment), and every example is rendered state-first or
 schema-first at random by the trainer, so neither appears here.
 Six teacher domains are held out of training and form the custom_* / routing_* probes."""
@@ -35,6 +41,8 @@ from decider_lfm.data.teacher_contrastive import to_examples as contrastive_exam
 
 MIX = dict(wide_per_task=8000, padded=25000, described=40000, json=32000, json_indexed=20000, single=30000, isolated_scale=26000, isolated_choice=9000,
            isolated_routing=1200, rules=90000, contrastive_repeat=3, replay=200000)
+MIX_CORE = dict(general=300000)                 # staged `core` mode: cap the plain-protocol sample (tune for the token budget)
+YMIX = dict(native=300000, verifier=300000, teacher=80000, abstain=120000, abstain_repeat=2)   # YESMOM counts
 HELD_DOMAINS = set(DOMAINS[-6:])
 SCALE_TASKS = ["helpsteer2", "helpsteer3_pref", "hate_speech_scales", "liar2", "prosocial_safety", "stsb"]
 TEACHER = "teacher_data"
@@ -77,21 +85,22 @@ def load_teacher():
     return recs, routes, commands
 
 
-def formats(train, evals, B, rng):
-    """wide / padded / described / json / single, from the plain examples."""
+def formats(train, evals, B, rng, wide=True):
+    """wide / padded / described / json / single, from the plain examples.  wide=False skips the label-set-heavy parts."""
     by_task = collections.defaultdict(list)
     for e in train: by_task[e.task].append(e)
     fixed = sorted({k[0] for k, (o, sp) in B.sets.items() if sp == "train" and not is_scale(o)})
     big = [t for t in fixed if any(len(o) > 10 for (tt, _), (o, _) in B.sets.items() if tt == t)]; small = [t for t in fixed if t not in big]
     modes = ["named", "opaque", "named_json", "opaque_json"]; out = collections.defaultdict(list)
-    for t in big:
-        for e in rng.sample(by_task[t], min(MIX["wide_per_task"], len(by_task[t]))):
-            n = max(len(q.options) for q in e.qs); r = rng.random()
-            out["wide"].append(B.choice(e, wide=n if r < 0.35 else rng.randint(11, n) if r < 0.7 else None, pad=npad(rng) if rng.random() < 0.2 else 0,
-                                        mode=rng.choice(modes) if rng.random() < 0.25 else "plain"))
-    pool3 = [e for t in small for e in by_task[t] if all(len(q.options) >= 3 for q in e.qs)]
-    for e in rng.sample(pool3, MIX["padded"]):
-        out["padded"].append(B.choice(e, pad=npad(rng), mode=rng.choice(modes) if rng.random() < 0.3 else "plain"))
+    if wide:
+        for t in big:
+            for e in rng.sample(by_task[t], min(MIX["wide_per_task"], len(by_task[t]))):
+                n = max(len(q.options) for q in e.qs); r = rng.random()
+                out["wide"].append(B.choice(e, wide=n if r < 0.35 else rng.randint(11, n) if r < 0.7 else None, pad=npad(rng) if rng.random() < 0.2 else 0,
+                                            mode=rng.choice(modes) if rng.random() < 0.25 else "plain"))
+        pool3 = [e for t in small for e in by_task[t] if all(len(q.options) >= 3 for q in e.qs)]
+        for e in rng.sample(pool3, MIX["padded"]):
+            out["padded"].append(B.choice(e, pad=npad(rng), mode=rng.choice(modes) if rng.random() < 0.3 else "plain"))
     for t in fixed:
         for e in rng.sample(by_task[t], min(MIX["described"] // len(fixed), len(by_task[t]))):
             out["described"].append(B.choice(e, mode=rng.choice(["named", "named", "opaque", "opaque", "named_json", "opaque_json"])))
@@ -166,6 +175,80 @@ def abstention_probes(evals, rng):
     return a, o
 
 
+# ---- YESMOM: Noul-only (state + one no/yes question per forward pass).  New code, not upstream.
+def is_noul_q(q):
+    """A noul (yes/no) question: exactly two options, false first, true second (systemone.render_question order)."""
+    o = [x.strip().lower() for x in q.options]
+    return len(o) == 2 and o[0].startswith("no") and o[1].startswith("yes")
+
+
+def _cap_sample(rows, cap, rng):
+    return rows if len(rows) <= cap else rng.sample(rows, cap)
+
+
+def _balance(rows, rng):
+    """Down-sample the majority answer so a binary head sees roughly equal yes and no."""
+    yes = [e for e in rows if e.qs[0].gold == 1]; no = [e for e in rows if e.qs[0].gold == 0]
+    if not yes or not no:
+        return rows
+    n = min(len(yes), len(no))
+    return rng.sample(yes, n) + rng.sample(no, n)
+
+
+def yesmom_sets(train, evals, recs, rng):
+    """Training rows for YESMOM, each a single Noul question:
+
+       native    the tasks whose question already is a no/yes pair (boolq-style reading, paraphrase, toxicity, ...)
+       verifier  one "does the proposed answer fit?" row per option of a broad task sample (systemone.ISOLATED), which is
+                 what teaches a tiny model to judge a single proposed answer; described criteria come along for free
+       teacher   teacher-written noul questions (held-out domains excluded)
+       abstain   the abstain / off-topic probes as binary rows, oversampled so the extremes calibrate
+    """
+    out = collections.defaultdict(list)
+    native = [(e, q) for e in train for q in e.qs if is_noul_q(q) and q.gold >= 0]
+    rng.shuffle(native)
+    for e, q in _cap_sample(native, YMIX["native"], rng):
+        out["native"].append(D.Example(e.context, [D.Q(q.text, list(q.options), q.gold)], "noul+fmt"))
+    pool = [(e, q) for e in train if e.task not in ("games", "mario") and len(e.context) <= 6000 for q in e.qs if len(q.options) >= 3 and q.gold >= 0]
+    rng.shuffle(pool)
+    for e, q in _cap_sample(pool, YMIX["verifier"] // 4, rng):        # isolated() emits one row per option
+        out["verifier"] += isolated(e, q, "verifier+iso")
+    for r in recs:
+        if r["domain"] in HELD_DOMAINS: continue
+        ex = to_example(r, D, S1, "noul+fmt")
+        for q, m in zip(ex.qs, r["questions"]):
+            if m.get("type") == "noul" and is_noul_q(q) and q.gold >= 0:
+                out["teacher"].append(D.Example(ex.context, [q], "noul+fmt"))
+    a, o = abstention_probes(evals, random.Random(7))
+    for e in a + o:
+        out["abstain"] += isolated(e, e.qs[0], "abstain+iso") * YMIX["abstain_repeat"]
+    rows = dict(out)
+    for k in rows:
+        rows[k] = _balance(rows[k], rng)
+    return rows
+
+
+def yesmom_probes(train, evals, recs, rng):
+    """Eval sets for YESMOM: the noul questions of every eval task (named by the task, so evaluate.py still separates
+    in-task from held-out), the held-out teacher noul questions, and the binary abstain / off-topic probes."""
+    pr = collections.defaultdict(list)
+    for t, exs in evals.items():
+        for e in exs:
+            for q in e.qs:
+                if is_noul_q(q) and q.gold >= 0:
+                    pr[t].append(D.Example(e.context, [D.Q(q.text, list(q.options), q.gold)], t))
+    for r in recs:
+        if r["domain"] not in HELD_DOMAINS: continue
+        ex = to_example(r, D, S1, "custom_noul")
+        for q, m in zip(ex.qs, r["questions"]):
+            if m.get("type") == "noul" and is_noul_q(q) and q.gold >= 0:
+                pr["custom_noul"].append(D.Example(ex.context, [q], "custom_noul"))
+    a, o = abstention_probes(evals, random.Random(7))
+    for e, tag in [(e, "abstain_binary") for e in a] + [(e, "offtopic_binary") for e in o]:
+        pr[tag] += isolated(e, e.qs[0], tag)
+    return dict(pr)
+
+
 def probes(train, evals, desc, recs, routes):
     """Evaluation-only sets for the input shapes (built from eval splits and held-out teacher domains)."""
     P = Builder(train, evals, desc, seed=66); prng = random.Random(66); out = {}
@@ -206,21 +289,29 @@ def probes(train, evals, desc, recs, routes):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--base", default="data/tasks.pkl"); ap.add_argument("--out", default="data/mixture.pkl"); ap.add_argument("--probes", default="data/probes.pkl")
-    ap.add_argument("--mode", default="full", choices=["full", "delta"]); ap.add_argument("--seed", type=int, default=6)
+    ap.add_argument("--mode", default="full", choices=["full", "core", "yesmom", "delta"]); ap.add_argument("--seed", type=int, default=6)
     a = ap.parse_args(); rng = random.Random(a.seed)
     train, evals = D.load_cache(a.base); desc = json.load(open(f"{TEACHER}/label_descriptions.json")); recs, routes, commands = load_teacher()
     if "abstain_probe" not in evals or "offtopic_probe" not in evals or not evals["offtopic_probe"]:
         evals["abstain_probe"], evals["offtopic_probe"] = abstention_probes(evals, random.Random(7))
-    B = Builder(train, evals, desc, seed=a.seed); parts = formats(train, evals, B, rng)
-    parts.update(teacher_sets(recs, routes, rng, commands)); parts["isolated"] += isolated_sets(train, rng)
-    parts["rules"] = R.build(MIX["rules"], seed=a.seed + 11)
-    parts["contrastive"] = [e for r in load_contrastive() if r["domain"] not in HELD_DOMAINS for e in contrastive_examples(r, D, S1)] * MIX["contrastive_repeat"]
-    general = [narrow(e, rng) for e in train]
-    if a.mode == "delta": rng.shuffle(general); general = general[:MIX["replay"]]
-    parts["general"] = general; out = [e for v in parts.values() for e in v]; rng.shuffle(out)
+    if a.mode == "yesmom":                                    # YESMOM is Noul-only: the eval sets are the binary probes
+        parts = yesmom_sets(train, evals, recs, rng); dump_evals = yesmom_probes(train, evals, recs, rng); probes_out = {}
+    else:
+        B = Builder(train, evals, desc, seed=a.seed); parts = formats(train, evals, B, rng, wide=a.mode in ("full", "delta"))
+        parts.update(teacher_sets(recs, routes, rng, commands)); parts["isolated"] += isolated_sets(train, rng)
+        if a.mode in ("full", "delta"):
+            parts["rules"] = R.build(MIX["rules"], seed=a.seed + 11)
+            parts["contrastive"] = [e for r in load_contrastive() if r["domain"] not in HELD_DOMAINS for e in contrastive_examples(r, D, S1)] * MIX["contrastive_repeat"]
+        general = [narrow(e, rng) for e in train]
+        if a.mode == "delta":
+            rng.shuffle(general); general = general[:MIX["replay"]]
+        elif a.mode == "core":
+            rng.shuffle(general); general = general[:MIX_CORE["general"]]
+        parts["general"] = general; dump_evals = evals; probes_out = probes(train, evals, desc, recs, routes)
+    out = [e for v in parts.values() for e in v]; rng.shuffle(out)
     print("[mixture]", {k: len(v) for k, v in parts.items()}, "total", len(out), flush=True)
-    pickle.dump((out, evals), open(a.out, "wb"))
-    pr = probes(train, evals, desc, recs, routes); pickle.dump(({}, pr), open(a.probes, "wb")); print("[mixture] probes:", {k: len(v) for k, v in pr.items()})
+    pickle.dump((out, dump_evals), open(a.out, "wb"))
+    pickle.dump(({}, probes_out), open(a.probes, "wb")); print("[mixture] probes:", {k: len(v) for k, v in probes_out.items()})
 
 
 if __name__ == "__main__":
