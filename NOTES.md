@@ -250,6 +250,63 @@ Caveats to keep attached to these numbers: public items only; zero-shot bases, n
 temperature is in-sample; local latency; and the hard tier's 111 public items are not the full 220, so
 even the hard-tier figure is a subset.
 
+## The first real checkpoint: selectia-1.2b-teacher (2026-09-22)
+
+The first trained selectia model, and it needed no dataset downloads: `scripts/make_teacher_data.py`
+turns the shipped `teacher_data/` into 102,580 training rows (18.0k packed/single custom questions,
+65.6k isolated rows, 9.3k commands, 9.7k routing) and 4,020 held-out eval rows, and the 1.2B was
+fine-tuned on it with 8-bit Adam and gradient checkpointing.
+
+Run: `LFM2.5-1.2B-Base`, 1 epoch, 706 optimizer steps, 14.1M tokens, lr 1e-5 with 200-step warmup,
+`max_tokens 12288`, `max_ctx 1536`, `schema_first_prob 0.5`, `none_prob 0` (no clean cross-task label
+pool exists in a single-source mixture, see the `none_augment` guard). **55 minutes on one RTX 4070**,
+5200 tokens/s, 10 GB allocated, CE 1.196 to 0.33, final grad norm ~20.
+
+On its own held-out teacher sets: accuracy 0.912, NLL 0.230, Brier 0.126, **ECE 0.053**, AURC 0.019.
+
+On JevBench's public items, against the same base model zero-shot:
+
+| metric (public items) | 1.2B base | selectia-1.2b-teacher |
+|---|---|---|
+| all 231 | 0.338 | **0.628** |
+| original (72) | 0.347 | **0.708** |
+| easy (48) | 0.313 | **1.000** |
+| hard (111) | 0.342 | **0.414** |
+| Brier, all | 0.758 | 0.558 |
+| ECE, all | 0.217 | 0.193 |
+| Brier, hard | 0.731 | 0.894 |
+| ECE, hard | 0.210 | 0.343 |
+| ECE after a fitted T = 2.5 | 0.081 | 0.097 |
+| paraphrase: agree / both correct | 0.833 / 0.306 | 0.722 / 0.583 |
+| latency p50 (hard) | 0.034 s | 0.035 s |
+
+Read it as:
+
+- **Accuracy nearly doubled from teacher data alone, with zero public datasets.** The easy tier went to
+  a perfect 1.000, matching `decider-2b`'s published easy 1.000, and the hard tier reached 0.414 against
+  `decider-2b`'s 0.473 - a 1.2B trained on 14M tokens is within 6 points of a 1.9B trained on the full
+  ~455M-token mixture.
+- **Calibration improved overall and got worse on the hard tier.** ECE fell 0.217 to 0.193 across the
+  public items, but on hard items it rose 0.210 to 0.343 while accuracy improved: the model learned to be
+  confident on the teacher's task shapes and is confidently wrong on long out-of-distribution items. This
+  is the same size-versus-calibration split seen across the bases, now caused by training rather than by
+  size, and it is the strongest argument for the plan's held-out calibration gate.
+- **One fitted temperature still rescues most of it** (hard-tier ECE 0.343 raw to 0.097 at T = 2.5), and
+  every model so far has wanted T around 2.3 to 2.5.
+- **Paraphrase behaviour flipped.** Agreement fell (0.833 to 0.722) while the both-correct rate rose
+  (0.306 to 0.583). The base was consistently wrong; the fine-tune is right more often and slightly less
+  self-consistent.
+
+Per-family, the gains are where the teacher data lives: tool_selection 1.00, fact 1.00, extraction 0.92,
+intent 0.88, tradeoff 0.83, against judge_hard 0.41, long_policy 0.32, multi_hop 0.28, temporal_numeric
+0.27, ambiguous 0.14. Everything needing a long state is still unsolved.
+
+Caveats: this checkpoint's `selectia_config.json` sets `schema_first` and `isolated_levels` true, so the
+benchmark ran it in the schema-first layout while the base runs used state-first, which is a confound
+worth removing before quoting the delta as pure training gain. It is a partial model (teacher data only,
+no public tasks, no rules, no contrastive), it is not published, and `decider-2b`'s hard figure is on the
+full 220-item tier while ours is the 111 public items.
+
 ## What is validated so far
 
 - `pytest tests` passes (19 tests): the request/answer layer, the rule data, the prompt layouts and the

@@ -251,7 +251,9 @@ def main():
             tr = [r for r in recs if r["tier"] == t]
             tiersum[t] = metric([tasks_by_id[r["task_id"]] for r in tr], tr)
         report["models"][model] = dict(runtime=runtime, summary=summary, tiers=tiersum)
-        tag = os.path.basename(model.rstrip("/")) or model.replace("/", "_")
+        p = model.rstrip("/")
+        tag = f"{os.path.basename(os.path.dirname(p))}_{os.path.basename(p)}" if os.path.isdir(p) else p.replace("/", "_")
+        tag = tag.replace(":", "_")             # a local checkpoint needs its run name, "model" alone collides
         json.dump(dict(runtime=runtime, summary=summary, tiers=tiersum),
                   open(os.path.join(a.out, f"{tag}__{a.order}.json"), "w"), indent=1)
         json.dump(recs, open(os.path.join(a.out, f"{tag}__{a.order}__records.json"), "w"), indent=1)

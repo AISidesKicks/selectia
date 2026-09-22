@@ -93,8 +93,10 @@ Work in progress, and honest about it.
   real optimizer loop, save the weights, and write a `selectia_config.json` that the runtime reads back.
 - Done: a benchmark harness (`selectia/bench/jevbench_public.py`) that scores our readout on JevBench's
   public items with JevBench's own scoring code, plus the zero-shot baselines below.
-- Not done: no trained or released weights yet, so no selectia accuracy or ECE numbers. The next step is
-  building `data/tasks.pkl` (`python -m selectia.data.core`) and the real mixture.
+- Done: `data/tasks.pkl` (968,970 train examples from 99 public datasets) and the first trained
+  checkpoint, `selectia-1.2b-teacher`, in 55 minutes on one RTX 4070.
+- Not done: no released weights, and the staged `core` mixture is not built yet. The 1.2B trained so far
+  is teacher-data only, so it has no public-task or rules training.
 
 ## Where the bases stand (zero-shot, JevBench public items)
 
@@ -117,6 +119,21 @@ Two findings worth keeping: the 2.6B is more accurate than the 1.2B *and worse c
 confidently wrong), and one fitted temperature fixes most of it - every base wants T around 2.3 to 2.5
 and ECE drops 2.5x to 3x. Full tables, per-family breakdowns, option-order sensitivity and the latency
 and token numbers are in `NOTES.md`.
+
+The first trained checkpoint, `selectia-1.2b-teacher`, is 55 minutes of fine-tuning on the shipped
+`teacher_data/` alone, with no public datasets, and it moves the same benchmark this far:
+
+| public items | 1.2B base | selectia-1.2b-teacher |
+|---|---|---|
+| all 231 | 0.338 | **0.628** |
+| easy | 0.313 | **1.000** |
+| hard | 0.342 | **0.414** |
+| hard ECE | 0.210 | 0.343, or 0.097 after one fitted T |
+
+Accuracy roughly doubles and the easy tier becomes perfect, but hard-tier calibration gets *worse* while
+hard-tier accuracy improves - the model learns to be confident on the shapes it saw. That gap is the
+argument for the held-out calibration gate in `plans/INTEND.md`, and it is why the score carries a
+Calibration axis separate from Intelligence.
 
 ## What fits on one 12 GB RTX 4070
 
