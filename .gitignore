@@ -15,3 +15,7 @@ __pycache__/
 # secrets (keep .env.example committed as the template)
 .env
 !.env.example
+
+# generated data (python -m selectia.data.core / .mixture)
+data/*.pkl
+data/*.jsonl
