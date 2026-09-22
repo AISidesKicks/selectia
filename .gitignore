@@ -11,3 +11,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+
+# secrets (keep .env.example committed as the template)
+.env
+!.env.example

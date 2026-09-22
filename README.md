@@ -151,3 +151,10 @@ Planned Hugging Face repositories, nothing published yet:
 tokenizer, `selectia_config.json`, the inference-only subset of `selectia/`, `MODEL-LICENSE`, card),
 and `scripts/upload_hf.py` pushes it. `create_repo(exist_ok=True)` in that script can create the repo
 itself, so pre-creating them on the Hub is only needed if your token cannot create repositories.
+
+Pushing needs a write token. Copy the template and fill it in, then load it into your shell:
+
+```bash
+cp .env.example .env        # put your write token in HF_TOKEN; .env is gitignored
+set -a; source .env; set +a
+```
