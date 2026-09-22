@@ -1,15 +1,15 @@
-"""decider on Bespoke's public benchmark suite (github.com/bespokelabsai/nimble, docs/PUBLIC_BENCHMARKS.md): 13 human-labelled
+"""selectia on Bespoke's public benchmark suite (github.com/bespokelabsai/nimble, docs/PUBLIC_BENCHMARKS.md): 13 human-labelled
 subsets, 3,880 records, in Jev's wire format, on which Bespoke-Nimble-9B and Jev 1.13.0 were both measured.  The records are rebuilt
 byte-for-byte from the manifests committed in that repository (their converters + the upstream files); each is one state and one
-question (choice with described options, noul with true/false criteria, or a 5-level score), scored here with `Decider.system_one`
+question (choice with described options, noul with true/false criteria, or a 5-level score), scored here with `Selectia.system_one`
 exactly as a user would call it.
 
-    python -m decider_lfm.bench.public_suite runs/r15_v9b/model /path/to/nimble/data/public --out suite.json [--isolated 0|1]"""
+    python -m selectia.bench.public_suite runs/r15_v9b/model /path/to/nimble/data/public --out suite.json [--isolated 0|1]"""
 import argparse, json, math, os, time, collections
 
 SUBSETS = ["vitaminc-dev", "massive-en-US", "massive-de-DE", "boolq", "squad2", "paws", "multinli", "civil_comments", "aegis2", "helpsteer2",
            "summeval-relevance", "summeval-consistency", "pubmedqa"]
-TRAINED = {"boolq", "paws", "civil_comments", "helpsteer2", "pubmedqa", "multinli", "massive-en-US"}   # decider's mixture holds a train split of these
+TRAINED = {"boolq", "paws", "civil_comments", "helpsteer2", "pubmedqa", "multinli", "massive-en-US"}   # the mixture holds a train split of these
 
 
 def ece(rows, bins=10):
@@ -24,8 +24,8 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument("model"); ap.add_argument("root"); ap.add_argument("--out", default="public_suite.json"); ap.add_argument("--isolated", type=int, default=None)
     ap.add_argument("--subsets", default=None)
     a = ap.parse_args()
-    from decider_lfm.infer import Decider
-    d = Decider(a.model); results = {}
+    from selectia.infer import Selectia
+    d = Selectia(a.model); results = {}
     for name in (a.subsets.split(",") if a.subsets else SUBSETS):
         recs = [json.loads(l) for l in open(os.path.join(a.root, name, "all.jsonl"), encoding="utf-8")]
         t = time.time(); rows = []; brier = 0.0; mae = 0.0; conf_ok = []; kinds = collections.Counter()
@@ -52,7 +52,7 @@ def main():
     results["_macro"] = round(sum(accs) / len(accs), 4); results["_micro"] = round(sum(a_ * n_ for a_, n_ in zip(accs, ns)) / sum(ns), 4)
     held = [r["acc"] for k, r in results.items() if not k.startswith("_") and not r["trained"]]
     results["_macro_untrained"] = round(sum(held) / len(held), 4) if held else None
-    print("[suite] macro", results["_macro"], "micro", results["_micro"], "macro over subsets decider never trained on", results["_macro_untrained"])
+    print("[suite] macro", results["_macro"], "micro", results["_micro"], "macro over subsets never trained on", results["_macro_untrained"])
     json.dump(results, open(a.out, "w"), indent=1)
 
 

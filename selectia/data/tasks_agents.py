@@ -2,10 +2,10 @@
   agenttraj : AgentGym/AgentTraj-L (ALFWorld, BabyAI, WebShop, SciWorld, ...) -> next action among candidates
   mind2web  : osunlp/Mind2Web -> which page element to act on, among candidates
   synth     : teacher_data/situations.jsonl from the 27B teacher (situation, options, best action, danger)
-  games     : teacher-labelled states from the train games in decider_lfm.games (+ Mario states)"""
+  games     : teacher-labelled states from the train games in selectia.games (+ Mario states)"""
 import json, os, random, re
 from collections import defaultdict
-from decider_lfm.data.core import task, Example, Q, _ld, SEED, TASKS, TRAIN_CAP, EVAL_CAP
+from selectia.data.core import task, Example, Q, _ld, SEED, TASKS, TRAIN_CAP, EVAL_CAP
 
 
 def _clip(s, n): return s if len(s) <= n else s[:n] + " ..."
@@ -105,7 +105,7 @@ def _synth():
 @task("games")
 def _games():
     """Teacher-labelled states from the train games (random-action noise for coverage)."""
-    from decider_lfm.games import envs as G
+    from selectia.games import envs as G
     rng = random.Random(SEED); out = []
     for name, cls in G.GAMES.items():
         if not cls.train:
@@ -127,18 +127,18 @@ def _games():
 
 @task("mario")
 def _mario():
-    """Teacher-labelled Super Mario Bros states (decider_lfm.games.mario_data writes data/mario.pkl; needs the emulator)."""
+    """Teacher-labelled Super Mario Bros states (selectia.games.mario_data writes data/mario.pkl; needs the emulator)."""
     import os
-    from decider_lfm.data.core import load_cache
+    from selectia.data.core import load_cache
     if not os.path.exists("data/mario.pkl"):
-        print("[mario] data/mario.pkl not found: run `python -m decider_lfm.games.mario_data data/mario.pkl` first; skipping", flush=True); return [], []
+        print("[mario] data/mario.pkl not found: run `python -m selectia.games.mario_data data/mario.pkl` first; skipping", flush=True); return [], []
     tr, ev = load_cache("data/mario.pkl")
     return [e for e in tr if e.task == "mario"], ev["mario"]
 
 
 @task("offtopic_probe", heldout=True)
 def _offtopic():
-    return [], []       # built by decider_lfm.data.mixture.abstention_probes: held-out tasks with an abstain option; half have off-topic option lists
+    return [], []       # built by selectia.data.mixture.abstention_probes: held-out tasks with an abstain option; half have off-topic option lists
 
 
 NEW_TASKS = ["agenttraj", "mind2web", "synth", "games", "mario"]

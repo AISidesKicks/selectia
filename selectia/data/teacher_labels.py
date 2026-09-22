@@ -2,10 +2,10 @@
 Used by build_v6 to train "described options" (Jev-style criteria: option name -> description / JSON rubric).
 In-task labels are described from the label name + 5 training examples; held-out tasks from the name and the
 question only (no eval text is shown to the teacher).
-   python -m decider_lfm.data.teacher_labels teacher_data/label_descriptions.json"""
+   python -m selectia.data.teacher_labels teacher_data/label_descriptions.json"""
 import argparse, collections, json, random, re, time, torch
-from decider_lfm import data as D
-from decider_lfm.data.augment import fixed_label_sets, SKIP_TASKS
+from selectia import data as D
+from selectia.data.augment import fixed_label_sets, SKIP_TASKS
 
 SYS = "You write short, precise category descriptions for a classification rubric. Output strict JSON only."
 PROMPT = ("Classification question: {q}\nAll categories: {cats}\n\nDescribe the category \"{label}\".{ex}\n"

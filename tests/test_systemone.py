@@ -1,6 +1,6 @@
 """The request/answer layer (no model, no torch): Jev-shaped questions -> prompt rows -> typed answers."""
 import json, math, pytest
-from decider_lfm import systemone as s1
+from selectia import systemone as s1
 
 
 def test_choice_with_descriptions_json_rubrics_and_null():

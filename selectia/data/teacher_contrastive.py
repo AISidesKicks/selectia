@@ -1,6 +1,6 @@
 """Teacher-written contrastive pairs: two states that differ in one fact, one policy, two different answers.
 
-The rule-conditioned generator (decider_lfm.data.rules) fixed rule reading over JSON records; it did not move natural-language evidence
+The rule-conditioned generator (selectia.data.rules) fixed rule reading over JSON records; it did not move natural-language evidence
 checking (VitaminC, PAWS, SummEval).  This is the natural-language version of the same idea, after Bespoke's curation recipe
 (github.com/bespokelabsai/nimble): the teacher writes a policy, a question, a base state whose answer needs two pieces of evidence
 read together, and a changed state where at most eight words of one fact differ and the answer flips.  Then, in separate calls, the
@@ -8,14 +8,14 @@ teacher re-answers every state from letter logits alone (no reasoning, no label 
 match the written labels and differ from each other.  Optionally the focus sentence is blanked and the teacher's confidence in the
 old answer must drop (the "removal check": the focus fact is what decides).
 
-    python -m decider_lfm.data.teacher_contrastive gen data/contrastive_raw.jsonl --n 6000 [--fp8 --mem 0.36]
-    python -m decider_lfm.data.teacher_contrastive verify data/contrastive_raw.jsonl teacher_data/contrastive_pairs.jsonl [--fp8 --mem 0.36]
+    python -m selectia.data.teacher_contrastive gen data/contrastive_raw.jsonl --n 6000 [--fp8 --mem 0.36]
+    python -m selectia.data.teacher_contrastive verify data/contrastive_raw.jsonl teacher_data/contrastive_pairs.jsonl [--fp8 --mem 0.36]
 
 Families target where Jev-style decisions were weakest on the public suite: claim verification, answerability, paraphrase, entailment,
-policy and eligibility rules, guardrails, moderation, rubric rating, indirection (exact arithmetic stays with decider_lfm.data.rules).  Domains are shared with
+policy and eligibility rules, guardrails, moderation, rubric rating, indirection (exact arithmetic stays with selectia.data.rules).  Domains are shared with
 teacher_questions (the last six are held out of training and become the `contrastive_*` probes)."""
 import argparse, json, random, re, time, torch
-from decider_lfm.data.teacher_questions import DOMAINS, STATE_KINDS, check
+from selectia.data.teacher_questions import DOMAINS, STATE_KINDS, check
 
 FAMILIES = [
     ("verification", "choice", "State = an evidence passage (2-4 sentences) and a claim. Question: how the evidence bears on the claim, criteria SUPPORTS / REFUTES / NOT ENOUGH INFO (each described). The changed state edits a number, name, date or negation in the evidence so that the label changes (e.g. SUPPORTS -> REFUTES, or REFUTES -> NOT ENOUGH INFO by removing the deciding detail)."),
@@ -49,19 +49,19 @@ def load_teacher(a, decision=False):
     if a.mem: torch.cuda.set_per_process_memory_fraction(a.mem)
     tok = AutoTokenizer.from_pretrained(a.model); tok.padding_side = "left"
     if decision:
-        from decider_lfm.model import DecisionModel
+        from selectia.model import DecisionModel
         m = DecisionModel(a.model, grad_ckpt=False) if not a.fp8 else _fp8_decision(a.model)
         return tok, m.cuda().eval()
     if a.fp8:
-        from decider_lfm.fp8 import convert_to_fp8
+        from selectia.fp8 import convert_to_fp8
         m = AutoModelForCausalLM.from_pretrained(a.model, dtype=torch.bfloat16, device_map="cpu"); n = convert_to_fp8(m); print(f"[teacher] {n} linears -> fp8", flush=True)
         return tok, m.cuda().eval()
     return tok, AutoModelForCausalLM.from_pretrained(a.model, dtype=torch.bfloat16, device_map="cuda").eval()
 
 
 def _fp8_decision(name):
-    from decider_lfm.model import DecisionModel
-    from decider_lfm.fp8 import convert_to_fp8
+    from selectia.model import DecisionModel
+    from selectia.fp8 import convert_to_fp8
     m = DecisionModel(name, grad_ckpt=False); convert_to_fp8(m.lm); return m
 
 
@@ -134,10 +134,10 @@ def blank_focus(rec):
 
 
 def verify(a):
-    from decider_lfm.model import collate
-    from decider_lfm.prompt import build
-    from decider_lfm import data as D
-    from decider_lfm import systemone as S1
+    from selectia.model import collate
+    from selectia.prompt import build
+    from selectia import data as D
+    from selectia import systemone as S1
     recs = [json.loads(l) for l in open(a.path)]; tok, m = load_teacher(a, decision=True)
     class K:
         def shuffle(self, x): pass

@@ -1,6 +1,6 @@
 """Synthetic situation->action data from a local teacher (Qwen3.5-27B, bf16, HF generate, batched).
 Each item: domain, situation text, question, 3-6 options, correct index, short reason, risk flag.
-   python -m decider_lfm.data.teacher_situations data/synth.jsonl --n 3000 [--model Qwen/Qwen3.5-27B]"""
+   python -m selectia.data.teacher_situations data/synth.jsonl --n 3000 [--model Qwen/Qwen3.5-27B]"""
 import argparse, json, random, re, time, torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 

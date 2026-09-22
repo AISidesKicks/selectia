@@ -17,10 +17,10 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from decider_lfm.infer import Q, Example                                     # noqa: E402
-from decider_lfm.model import DecisionModel, collate, pad_id                 # noqa: E402
-from decider_lfm.prompt import build                                         # noqa: E402
-from decider_lfm.train import loss_fn                                        # noqa: E402
+from selectia.infer import Q, Example                                     # noqa: E402
+from selectia.model import DecisionModel, collate, pad_id                 # noqa: E402
+from selectia.prompt import build                                         # noqa: E402
+from selectia.train import loss_fn                                        # noqa: E402
 
 FILLER = "The customer reported an issue with the order and asked for help. "
 QUESTION_TAIL = 200                       # room for the two question blocks and both answer slots

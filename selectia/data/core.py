@@ -657,8 +657,8 @@ def _bib():
 # ---------------------------------------------------------------- driver
 def load_cache(path="data/tasks.pkl"):
     import pickle, sys, __main__
-    __main__.Example = Example; __main__.Q = Q      # tolerate caches pickled from `python -m decider_lfm.data`
-    pkg = sys.modules.get("decider_lfm") or sys.modules.get("decider")      # tolerate caches from the old `s1` / `decider` name
+    __main__.Example = Example; __main__.Q = Q      # tolerate caches pickled from `python -m selectia.data`
+    pkg = sys.modules.get("selectia")               # tolerate caches from the old `s1` package name
     if pkg is not None:
         sys.modules.setdefault("s1", pkg); sys.modules.setdefault("s1.data", sys.modules[__name__])
     return pickle.load(open(path, "rb"))
@@ -683,13 +683,13 @@ def load_all(names=None, verbose=True):
         evals[n] = ev
         if verbose:
             ex = (tr or ev or [None])[0]
-            print(f"[data] {n:22s} train={len(tr):6d} eval={len(ev):5d} heldout={held}" + (f" nq={len(ex.qs)} nopt={len(ex.qs[0].options)}" if ex else " (built later by decider_lfm.data.mixture)"))
+            print(f"[data] {n:22s} train={len(tr):6d} eval={len(ev):5d} heldout={held}" + (f" nq={len(ex.qs)} nopt={len(ex.qs[0].options)}" if ex else " (built later by selectia.data.mixture)"))
     return train, evals
 
 
 if __name__ == "__main__":
     import argparse, pickle, os
-    from decider_lfm import data as D                        # registers every task module; pickles under the package name, not __main__
+    from selectia import data as D                        # registers every task module; pickles under the package name, not __main__
     ap = argparse.ArgumentParser(description="Download and convert the registered tasks into one cache."); ap.add_argument("tasks", nargs="*"); ap.add_argument("--out", default="data/tasks.pkl")
     a = ap.parse_args(); train, evals = D.load_all(a.tasks or None)
     print("total train", len(train), "eval tasks", len(evals), "eval examples", sum(len(v) for v in evals.values()))

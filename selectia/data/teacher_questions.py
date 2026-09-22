@@ -2,8 +2,8 @@
 in the Jev request shape (noul / choice with criteria / score with levels).  Targets what the public datasets do not cover:
 free-form yes/no questions about arbitrary properties, user-named options (snake_case ids, descriptions), and option lists
 with a GENERIC option next to a catch-all ("support" vs "other"), where the generic one is the right answer.
-   python -m decider_lfm.data.teacher_questions gen data/synth_custom_raw.jsonl --n 7000
-   python -m decider_lfm.data.teacher_questions verify data/synth_custom_raw.jsonl data/synth_custom.jsonl     (teacher re-answers every question
+   python -m selectia.data.teacher_questions gen data/synth_custom_raw.jsonl --n 7000
+   python -m selectia.data.teacher_questions verify data/synth_custom_raw.jsonl data/synth_custom.jsonl     (teacher re-answers every question
         on its own, from letter logits; only questions where it agrees with the answer written at generation time are kept)"""
 import argparse, json, random, re, time, torch
 
@@ -181,10 +181,10 @@ def to_example(rec, D, S1, task="custom"):
 
 def verify(a):
     """Teacher answers every question alone (one row per question, letter logits, zero-shot) and we keep agreements."""
-    from decider_lfm.model import DecisionModel, collate
-    from decider_lfm.prompt import build
-    from decider_lfm import data as D
-    from decider_lfm import systemone as S1
+    from selectia.model import DecisionModel, collate
+    from selectia.prompt import build
+    from selectia import data as D
+    from selectia import systemone as S1
     recs = [json.loads(l) for l in open(a.path)]
     m = DecisionModel(a.model, grad_ckpt=False).cuda().eval(); rng = random.Random(0); kept = tot = 0; agree = {}
     class K:

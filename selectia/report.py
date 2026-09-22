@@ -1,6 +1,6 @@
-"""Compare runs: python -m decider_lfm.report runs/zs_2b runs/zs_4b runs/r1_200k/final ..."""
+"""Compare runs: python -m selectia.report runs/zs_2b runs/zs_4b runs/r1_200k/final ..."""
 import json, pickle, sys, numpy as np
-from decider_lfm.metrics import summarize
+from selectia.metrics import summarize
 
 
 def load(run):

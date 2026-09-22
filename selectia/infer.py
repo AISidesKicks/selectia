@@ -1,15 +1,15 @@
 """Usable inference API: typed decisions with probabilities, all from one forward pass.
 
-    from decider_lfm.infer import Decider
-    d = Decider("runs/r2_full/model")
+    from selectia.infer import Selectia
+    d = Selectia("runs/r2_full/model")
     out = d.decide("My card was charged twice for the same purchase.",
                    [{"question": "Which department should handle this?", "options": ["billing", "technical", "sales"]},
                     {"question": "How urgent is this?", "options": ["low", "medium", "high"]}])
     # -> [{'choice': 'billing', 'confidence': 0.97, 'probs': {...}}, {...}]
 """
 import torch
-from decider_lfm.model import DecisionModel, collate, pad_id
-from decider_lfm.prompt import build, MAX_OPTIONS, label_capacity
+from selectia.model import DecisionModel, collate, pad_id
+from selectia.prompt import build, MAX_OPTIONS, label_capacity
 from dataclasses import dataclass
 
 
@@ -44,7 +44,7 @@ class CompiledSchema:
     def __init__(self, d, rqs, h, index): self.d, self.rqs, self.h, self.index = d, rqs, h, index
 
     def batch(self, states, max_state_tokens=32768):
-        from decider_lfm.systemone import render_state, assemble
+        from selectia.systemone import render_state, assemble
         probs = self.d._se.score(self.h, [render_state(s) for s in states], temperature=self.d.T_schema, max_ctx_tokens=max_state_tokens)
         return [{"model": self.d.name, "answers": assemble(self.rqs, self.index, [p.tolist() for p in pr])} for pr in probs]
 
@@ -52,16 +52,16 @@ class CompiledSchema:
         return self.batch([state], max_state_tokens)[0]
 
 
-class Decider:
-    """use_graphs=True routes scoring through decider_lfm.engine.Engine (shape-bucketed CUDA graphs, ~7x lower
+class Selectia:
+    """use_graphs=True routes scoring through selectia.engine.Engine (shape-bucketed CUDA graphs, ~7x lower
     single-request latency than eager); it needs the Phase 5 engine. Eager is the default here, and the only
     path until that engine is vendored."""
     def __init__(self, path, device="cuda", dtype=torch.bfloat16, temperature=None, abstain_below=0.0, use_graphs=None):
         import json, os
         cfg = {}
-        try:                                          # model folder may carry decider_config.json (temperature, flags)
+        try:                                          # model folder may carry selectia_config.json (temperature, flags)
             from huggingface_hub import hf_hub_download
-            cfg_path = os.path.join(path, "decider_config.json") if os.path.isdir(path) else hf_hub_download(path, "decider_config.json")
+            cfg_path = os.path.join(path, "selectia_config.json") if os.path.isdir(path) else hf_hub_download(path, "selectia_config.json")
             cfg = json.load(open(cfg_path))
         except Exception:
             pass
@@ -72,16 +72,16 @@ class Decider:
             use_graphs = False          # the CUDA-graph engine is Phase 5; the eager readout is the default until then
         if use_graphs:
             try:
-                from decider_lfm.engine import Engine
+                from selectia.engine import Engine
             except ImportError as e:
-                raise ImportError("use_graphs=True needs decider_lfm/engine.py, which is not vendored until Phase 5") from e
+                raise ImportError("use_graphs=True needs selectia/engine.py, which is not vendored until Phase 5") from e
             self.eng = Engine(path, device=device, dtype=dtype); self.m = self.eng.m
         else:
             self.eng = None; self.m = DecisionModel(path, dtype=dtype, grad_ckpt=False).to(device).eval()
         self.dev = device; self.T = temperature; self.abstain_below = abstain_below
         self.yesmom = bool(cfg.get("yesmom", False))                  # YESMOM: Noul-only binary head, no Choice/Score
         self.max_options = min(MAX_OPTIONS, label_capacity(self.m.tok))  # tokenizer capacity, not the constant
-        self.name = ("yesmom-" if self.yesmom else "decider-") + str(cfg.get("version", "dev"))
+        self.name = ("yesmom-" if self.yesmom else "selectia-") + str(cfg.get("version", "dev"))
         self.schema_first = bool(cfg.get("schema_first", False)) and self.eng is not None      # default layout. Questions-first (the cacheable one) costs accuracy
         self.T_schema = float(cfg.get("temperature_schema_first", temperature))                # (about 1.5 points on fixed label sets, more elsewhere): opt in with schema()
         self.isolated_levels = bool(cfg.get("isolated_levels", False))      # Score levels judged one per row (v8+)
@@ -131,13 +131,13 @@ class Decider:
     def decide(self, context, questions, **kw):
         return self.decide_batch([(context, questions)], **kw)[0]
 
-    # ---- Jev-shaped interface (decider_lfm.systemone): state + {id: Choice | Score | Noul with criteria}
-    # ---- schema cache (v7+): the questions are run once, requests only run the state (decider_lfm.schema_engine)
+    # ---- Jev-shaped interface (selectia.systemone): state + {id: Choice | Score | Noul with criteria}
+    # ---- schema cache (v7+): the questions are run once, requests only run the state (selectia.schema_engine)
     def schema(self, questions, independent=True, isolated=None, compile=False):
         """Compile a fixed set of Jev-shaped questions: schema(state) -> answers; schema.batch([state, ...]) -> [answers]."""
         import json
-        from decider_lfm.schema_engine import SchemaEngine
-        from decider_lfm.systemone import render_question
+        from selectia.schema_engine import SchemaEngine
+        from selectia.systemone import render_question
         isolated = self.isolated_levels if isolated is None else isolated
         key = (json.dumps(questions, sort_keys=True, ensure_ascii=False), independent, isolated)
         if key not in self._schemas:
@@ -145,7 +145,7 @@ class Decider:
             if len(self._schemas) >= 64:                                  # drop the oldest schema and its graphs
                 old = next(iter(self._schemas)); hid = self._schemas.pop(old)[1].id
                 for k in [k for k in self._se.graphs if k[0] == hid]: del self._se.graphs[k]
-            from decider_lfm.systemone import plan_rows
+            from selectia.systemone import plan_rows
             rqs = {k: render_question(v) for k, v in questions.items()}
             rows, index = plan_rows(rqs, isolated and independent)
             h = self._se.prepare(rows, independent=independent, compile=compile)      # compile=True: ~25 s per (batch, length) shape, 1.6x faster after
@@ -161,7 +161,7 @@ class Decider:
         reordering questions cannot change any other answer; the state is run once and its cache forked to every
         question (Engine.score_shared).  independent=False packs all questions behind one copy of the state in one row
         (later questions can then see earlier question texts)."""
-        from decider_lfm.systemone import render_state, render_question, unique_tokens, plan_rows, assemble
+        from selectia.systemone import render_state, render_question, unique_tokens, plan_rows, assemble
         ctx = render_state(state); rqs = {k: render_question(v) for k, v in questions.items()}
         if self.yesmom and any(r["type"] != "noul" for r in rqs.values()):
             raise ValueError("yesmom model: only noul questions are supported")
@@ -246,7 +246,7 @@ class Decider:
 
 if __name__ == "__main__":
     import sys, json, time
-    d = Decider(sys.argv[1] if len(sys.argv) > 1 else "runs/r1_200k/model")
+    d = Selectia(sys.argv[1] if len(sys.argv) > 1 else "runs/r1_200k/model")
     demo = [
         ("My card was charged twice for the same purchase and I want the extra charge refunded.",
          [{"question": "Which department should handle this?", "options": ["billing", "technical support", "sales"]},

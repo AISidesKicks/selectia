@@ -1,6 +1,6 @@
 """The rule-conditioned data: labels are computed, twins flip them, every gold index is valid."""
 import collections
-from decider_lfm.data import rules as R
+from selectia.data import rules as R
 
 
 def test_build_is_deterministic_and_well_formed():

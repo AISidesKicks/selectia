@@ -1,8 +1,8 @@
 """The training mixture and the probes, in one place.
 
-    python -m decider_lfm.data.mixture [--base data/tasks.pkl] [--out data/mixture.pkl] [--probes data/probes.pkl] [--mode full|core|yesmom|delta]
+    python -m selectia.data.mixture [--base data/tasks.pkl] [--out data/mixture.pkl] [--probes data/probes.pkl] [--mode full|core|yesmom|delta]
 
-`--base` is the converted-task cache from `python -m decider_lfm.data.core` (plain examples, ~1M).  On top of it (counts in MIX):
+`--base` is the converted-task cache from `python -m selectia.data.core` (plain examples, ~1M).  On top of it (counts in MIX):
 
   general     every training task at the original protocol (label sets > 10 sub-sampled to 10)
   wide        full native label sets (CLINC 151, Banking 77, ...) and small label sets padded with unrelated labels, up to 255 options
@@ -15,9 +15,9 @@
   commands    shell commands labelled safe / caution / destructive and "touches things outside the project"  (teacher_data/commands.jsonl)
   isolated    one yes/no row per Score level (and per option of some Choice questions)
   contrastive teacher-written pairs: two states that differ in one fact, the answer flips (teacher_data/contrastive_pairs.jsonl,
-              decider_lfm.data.teacher_contrastive; held-out domains form the contrastive_* probes)
+              selectia.data.teacher_contrastive; held-out domains form the contrastive_* probes)
   rules       rule-conditioned decisions over JSON records, every example with a state twin and a rule twin whose label flips
-              (decider_lfm.data.rules: programmatic, exact labels; three domains and two rule families held out for the probes)
+              (selectia.data.rules: programmatic, exact labels; three domains and two rule families held out for the probes)
 
 mode=full   is the single-run recipe: train Qwen3.5-2B-Base on it for one epoch (scripts/train.sh).
 mode=core   is the staged LFM2.5 milestone: the core decision formats (described options, JSON states, single-question and
@@ -26,18 +26,18 @@ mode=core   is the staged LFM2.5 milestone: the core decision formats (described
 mode=yesmom is Noul-only (state + one no/yes question per forward pass) for the 350M/230M bases: the native no/yes tasks,
             isolated "does the proposed answer fit?" rows, teacher-written noul questions and the binary abstain/off-topic
             rows, balanced 50/50 on yes/no.  New here, not upstream.
-mode=delta  keeps only a replay sample of `general`; it is what a continuation from an existing decider checkpoint uses
+mode=delta  keeps only a replay sample of `general`; it is what a continuation from an existing selectia checkpoint uses
             (the released weights were produced this way, in stages; see docs/HISTORY.md).
-Abstain options are added at train time (decider_lfm.data.augment.none_augment), and every example is rendered state-first or
+Abstain options are added at train time (selectia.data.augment.none_augment), and every example is rendered state-first or
 schema-first at random by the trainer, so neither appears here.
 Six teacher domains are held out of training and form the custom_* / routing_* probes."""
 import argparse, collections, json, pickle, random
-from decider_lfm import data as D
-from decider_lfm import systemone as S1
-from decider_lfm.data.augment import Builder, is_scale, narrow, indexed, isolated
-from decider_lfm.data.teacher_questions import to_example, DOMAINS
-from decider_lfm.data import rules as R
-from decider_lfm.data.teacher_contrastive import to_examples as contrastive_examples
+from selectia import data as D
+from selectia import systemone as S1
+from selectia.data.augment import Builder, is_scale, narrow, indexed, isolated
+from selectia.data.teacher_questions import to_example, DOMAINS
+from selectia.data import rules as R
+from selectia.data.teacher_contrastive import to_examples as contrastive_examples
 
 MIX = dict(wide_per_task=8000, padded=25000, described=40000, json=32000, json_indexed=20000, single=30000, isolated_scale=26000, isolated_choice=9000,
            isolated_routing=1200, rules=90000, contrastive_repeat=3, replay=200000)
@@ -159,7 +159,7 @@ def isolated_sets(train, rng):
 def abstention_probes(evals, rng):
     """abstain_probe: held-out tasks + "none of the above"; in half, the gold option is removed.  offtopic_probe: an abstain option in
     varied wordings; in half, the whole option list comes from another task (abstaining is right)."""
-    from decider_lfm.data.augment import ABSTAIN_WORDINGS
+    from selectia.data.augment import ABSTAIN_WORDINGS
     src = ["trec", "bbc_news", "massive_scenario", "student_questions", "dolly_category", "fin_sentiment"]; a, o = [], []
     for t in src:
         for e in evals[t][:270]:

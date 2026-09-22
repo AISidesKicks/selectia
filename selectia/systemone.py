@@ -1,4 +1,4 @@
-"""Jev-shaped requests on top of the decider prompt format (same wire format as TypeSafe's POST /v1/systemone).
+"""Jev-shaped requests on top of the selectia prompt format (same wire format as TypeSafe's POST /v1/systemone).
 
     state      str | dict | list            JSON state is serialised compactly; questions may name a part by path (`ticket.messages[0].text`)
     questions  {id: {"type": "choice", "instructions": ..., "criteria": {name: description | {...} | [...] | None}}      up to 255 options

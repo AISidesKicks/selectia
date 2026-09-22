@@ -1,13 +1,13 @@
 """Isolated level scoring vs listwise, on every ordinal-scale question of the eval sets (and the teacher-written score questions).
    listwise : the usual prompt, all levels listed with their numbers, one softmax
    isolated : one row per level (state + question + that level only, number stripped) -> P(fits); normalised over levels
-   python -m decider_lfm.probes.isolated runs/r12_v7/model [--n 300] [--layout schema_first]"""
+   python -m selectia.probes.isolated runs/r12_v7/model [--n 300] [--layout schema_first]"""
 import argparse, json, re, random, numpy as np, torch
-from decider_lfm.model import DecisionModel, collate
-from decider_lfm.prompt import build
-from decider_lfm.metrics import summarize
-from decider_lfm.systemone import isolated_rows, combine_isolated
-from decider_lfm import data as D
+from selectia.model import DecisionModel, collate
+from selectia.prompt import build
+from selectia.metrics import summarize
+from selectia.systemone import isolated_rows, combine_isolated
+from selectia import data as D
 
 
 class K:

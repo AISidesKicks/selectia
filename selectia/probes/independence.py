@@ -3,11 +3,11 @@
    reversed     packed, questions in reverse order
    independent  one row per question (context + that question only): independent by construction
 Reports accuracy for each, and how far the packed answers move when the company changes.
-   python -m decider_lfm.probes.independence runs/r10_v5/model [--n 300]"""
+   python -m selectia.probes.independence runs/r10_v5/model [--n 300]"""
 import argparse, json, random, numpy as np, torch
-from decider_lfm.model import DecisionModel, collate
-from decider_lfm.prompt import build
-from decider_lfm import data as D
+from selectia.model import DecisionModel, collate
+from selectia.prompt import build
+from selectia import data as D
 
 
 class _Keep:

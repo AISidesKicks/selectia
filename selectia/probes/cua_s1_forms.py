@@ -1,11 +1,11 @@
-"""decider, zero-shot, on the form-filling task of Cua's CUA-S1-FORMS specialist (github.com/trycua/cua, libs/cua-s1, MIT).
+"""selectia, zero-shot, on the form-filling task of Cua's CUA-S1-FORMS specialist (github.com/trycua/cua, libs/cua-s1, MIT).
 
 Their generator writes one row per form element: a 3-line context (task / form title / element), the document entities as
 "fill <label>: <value>" options plus check / click / skip, and the gold option.  Generate their test split first:
 
     git clone --depth 1 https://github.com/trycua/cua /tmp/cua
     PYTHONPATH=/tmp/cua/libs/cua-s1/python/src python -m cua_s1.synth --output /tmp/cua_s1_data --episodes 6000
-    python -m decider_lfm.probes.cua_s1_forms runs/r15_v9b/model /tmp/cua_s1_data/test.jsonl [--prompt bare|short|rules]
+    python -m selectia.probes.cua_s1_forms runs/r15_v9b/model /tmp/cua_s1_data/test.jsonl [--prompt bare|short|rules]
 
 "bare" is their format verbatim (no question, no descriptions); "short" adds a one-sentence question and "skip (leave this
 element alone)"; "rules" spells out every rule in the question.  Results (v9, 14,254 decisions, forms disjoint from their training
@@ -28,10 +28,10 @@ PROMPTS = {
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("model"); ap.add_argument("rows"); ap.add_argument("--prompt", default="short", choices=PROMPTS); ap.add_argument("--bs", type=int, default=256)
     a = ap.parse_args()
-    from decider_lfm.infer import Decider
+    from selectia.infer import Selectia
     q, desc = PROMPTS[a.prompt]
     rows = [json.loads(l) for l in open(a.rows)]
-    d = Decider(a.model); t = time.time(); preds = []
+    d = Selectia(a.model); t = time.time(); preds = []
     for i in range(0, len(rows), a.bs):
         chunk = rows[i:i + a.bs]
         preds += [o[0] for o in d.decide_batch([(r["context"], [{"question": q, "options": [desc.get(o, o) for o in r["options"]]}]) for r in chunk])]

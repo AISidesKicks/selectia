@@ -1,11 +1,11 @@
 """Prompt rendering with the real LFM2.5 tokenizer (no torch needed).
 
-Set DECIDER_LFM_TOKENIZER to probe a different size (default: the 128k-vocab 2.6B, the widest label table).
+Set SELECTIA_TOKENIZER to probe a different size (default: the 128k-vocab 2.6B, the widest label table).
 """
 import os, random, pytest
-from decider_lfm import prompt
+from selectia import prompt
 
-TOKENIZER = os.environ.get("DECIDER_LFM_TOKENIZER", "LiquidAI/LFM2.5-2.6B-Base")
+TOKENIZER = os.environ.get("SELECTIA_TOKENIZER", "LiquidAI/LFM2.5-2.6B-Base")
 
 try:
     from transformers import AutoTokenizer

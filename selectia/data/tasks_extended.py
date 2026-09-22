@@ -1,7 +1,7 @@
 """Mixture v2: ordinal scales, pairwise preference judging, tool selection, more QA/NLI, abstention probe."""
 import json, random, re
 from collections import defaultdict
-from decider_lfm.data.core import task, Example, Q, _ld, _sub, _cls, _mcq, _split_pair, _both, TRAIN_CAP, EVAL_CAP, SEED, TASKS
+from selectia.data.core import task, Example, Q, _ld, _sub, _cls, _mcq, _split_pair, _both, TRAIN_CAP, EVAL_CAP, SEED, TASKS
 
 
 def _scale(legend):
@@ -358,7 +358,7 @@ def _multirc():
 @task("cb", heldout=True)
 def _cb():
     tr, ev = _split_pair("aps/super_glue", "cb", "train", "validation")
-    from decider_lfm.data.core import NLI
+    from selectia.data.core import NLI
     cb2nli = {0: 0, 1: 2, 2: 1}      # super_glue cb: 0 entailment, 1 contradiction, 2 neutral -> NLI list order
     f = lambda ds, t, cap: _cls(ds, lambda r: f"Text 1: {r['premise']}\nText 2: {r['hypothesis']}", lambda r: cb2nli.get(int(r["label"]), -1), "What is the logical relation between text 1 and text 2?", NLI, t, cap)
     return _both(f, tr, ev, "cb")
@@ -431,7 +431,7 @@ def _xsc():
 
 @task("mario", heldout=False)
 def _mario():
-    return [], []       # built by decider_lfm.games.mario_data
+    return [], []       # built by selectia.games.mario_data
 
 
 @task("abstain_probe", heldout=True)

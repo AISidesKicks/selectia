@@ -3,9 +3,9 @@
               generic: the generic option is right although a catch-all is offered; specific: a specific option is right;
               catchall: nothing fits, the catch-all is right.
   noul        free-form yes/no questions about properties no training dataset asks about.
-   python -m decider_lfm.probes.batteries runs/r11_v6/model [more models]"""
+   python -m selectia.probes.batteries runs/r11_v6/model [more models]"""
 import sys, json
-from decider_lfm.infer import Decider
+from selectia.infer import Selectia
 
 DOMAINS = [
  ("What is the user trying to do?", {"check_balance": None, "approve_transfer": None, "support": None, "other": None}, [
@@ -123,7 +123,7 @@ ABSTAIN_CASES = [("My card was charged twice for the same purchase.", "Which dep
 def main():
     layouts = [a.split("=")[1] for a in sys.argv[1:] if a.startswith("--layout=")] or ["state_first"]
     for path, layout in [(p, l) for p in sys.argv[1:] if not p.startswith("--") for l in layouts]:
-        d = Decider(path, use_graphs=False); res = {}; so = d.system_one
+        d = Selectia(path, use_graphs=False); res = {}; so = d.system_one
         d.system_one = lambda st, qs, _so=so, _l=layout: _so(st, qs, layout=_l)
         for ins, crit, cases in DOMAINS:
             for msg, gold, kind in cases:

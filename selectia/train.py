@@ -1,13 +1,13 @@
 """Stage 1: proper-scoring-rule fine-tune (CE, optionally + Brier) on the multi-task decision mixture."""
 import argparse, json, math, os, pickle, random, time
 import numpy as np, torch, torch.nn.functional as F
-from decider_lfm.model import DecisionModel, collate, pad_id
-from decider_lfm.prompt import build, MAX_OPTIONS, label_capacity
-from decider_lfm.evaluate import run_eval, aggregate
-from decider_lfm import data as D
+from selectia.model import DecisionModel, collate, pad_id
+from selectia.prompt import build, MAX_OPTIONS, label_capacity
+from selectia.evaluate import run_eval, aggregate
+from selectia import data as D
 
 
-from decider_lfm.data.augment import none_augment, build_label_pool
+from selectia.data.augment import none_augment, build_label_pool
 
 
 def make_items(train, tok, rng, max_ctx, none_prob=0.0, max_options=10, schema_first_prob=0.0):
@@ -75,10 +75,10 @@ def main():
     ap.add_argument("--max_options", type=int, default=0, help="options kept per question (0 = auto: the tokenizer's label capacity, capped at 255; 10 = original narrow protocol)")
     ap.add_argument("--grad_ckpt", action="store_true", help="activation checkpointing (needed for the 2.6B)")
     ap.add_argument("--device", default="", help="cuda | cpu (default: cuda when available)")
-    ap.add_argument("--yesmom", action="store_true", help="YESMOM: Noul-only binary head; marks decider_config.json")
+    ap.add_argument("--yesmom", action="store_true", help="YESMOM: Noul-only binary head; marks selectia_config.json")
     ap.add_argument("--isolated_levels", default=None, action=argparse.BooleanOptionalAction, help="Score levels judged one per row (default on; off for --yesmom)")
-    ap.add_argument("--temperature", type=float, default=1.0, help="value written to decider_config.json (fit it in Phase 4)")
-    ap.add_argument("--version", default="dev", help="version tag written to decider_config.json")
+    ap.add_argument("--temperature", type=float, default=1.0, help="value written to selectia_config.json (fit it in Phase 4)")
+    ap.add_argument("--version", default="dev", help="version tag written to selectia_config.json")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     logf = open(f"{a.out}/train.log", "a")
@@ -104,14 +104,14 @@ def main():
     iso = (not a.yesmom) if a.isolated_levels is None else bool(a.isolated_levels)
 
     def save():
-        """Weights + the runtime contract.  Decider reads temperature/layout/flags only from
-        decider_config.json, which upstream train.py never wrote."""
+        """Weights + the runtime contract.  The runtime reads temperature/layout/flags only from
+        selectia_config.json, which upstream train.py never wrote."""
         model.lm.save_pretrained(f"{a.out}/model"); tok.save_pretrained(f"{a.out}/model")
         cfg = dict(version=a.version, temperature=a.temperature, model=a.model, max_options=a.max_options,
                    max_ctx=a.max_ctx, isolated_levels=iso, schema_first=a.schema_first_prob > 0)
         if a.yesmom:
             cfg["yesmom"] = True
-        with open(f"{a.out}/model/decider_config.json", "w") as f:
+        with open(f"{a.out}/model/selectia_config.json", "w") as f:
             json.dump(cfg, f, indent=1)
         log("[save]", f"{a.out}/model")
     log(f"[data] train examples {len(train)}; tokenizing...")

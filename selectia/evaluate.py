@@ -1,15 +1,15 @@
 """Evaluate a DecisionModel (fine-tuned or raw base) on all eval sets. Saves per-question probs."""
 import argparse, json, os, pickle, random, time
 import numpy as np, torch
-from decider_lfm.model import DecisionModel, collate, pad_id
-from decider_lfm.prompt import build
-from decider_lfm.metrics import summarize
-from decider_lfm import data as D
+from selectia.model import DecisionModel, collate, pad_id
+from selectia.prompt import build
+from selectia.metrics import summarize
+from selectia import data as D
 
 
 @torch.no_grad()
 def run_eval(model, evals, bs=32, max_ctx=1536, temperature=1.0, log=print, engine=None, max_options=None, max_tokens=24576, layout="state_first"):
-    """engine: optional decider_lfm.engine.Engine; if given, scoring goes through it instead of the eager path."""
+    """engine: optional selectia.engine.Engine; if given, scoring goes through it instead of the eager path."""
     model.eval()
     dev = next(model.parameters()).device
     results, dump = {}, {}
@@ -83,9 +83,9 @@ if __name__ == "__main__":
     eng = None
     if a.engine:
         try:
-            from decider_lfm.engine import Engine
+            from selectia.engine import Engine
         except ImportError as e:
-            raise SystemExit("--engine needs decider_lfm/engine.py, not vendored until Phase 5; use --engine eager") from e
+            raise SystemExit("--engine needs selectia/engine.py, not vendored until Phase 5; use --engine eager") from e
         eng = Engine(a.model, compile=a.engine in ("compile", "fp8"), fp8=a.engine == "fp8", conv_patch=a.engine in ("compile", "fp8"))
         m = eng.m
     else:

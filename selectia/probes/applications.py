@@ -2,9 +2,9 @@
   router    which model tier should answer a user prompt (small/fast, code model, large reasoning model, a person) + does it need tools
   commands  shell command safety: safe / caution / destructive, + does it leave the project directory
   browser   a web page as JSON (task, url, elements): which element to act on next, and which action
-   python -m decider_lfm.probes.applications runs/r13_v8/model [--layout schema_first]"""
+   python -m selectia.probes.applications runs/r13_v8/model [--layout schema_first]"""
 import json, sys
-from decider_lfm.infer import Decider
+from selectia.infer import Selectia
 
 ROUTER_Q = {"tier": {"type": "choice", "instructions": "Which model should answer this prompt?",
                      "criteria": {"small_fast": "short factual answers, rewording, formatting, simple classification, chit-chat",
@@ -94,7 +94,7 @@ ACTIONS = {"click": "click the element (button, link, option row)", "type": "typ
 
 def main():
     layout = next((a.split("=")[1] for a in sys.argv[2:] if a.startswith("--layout=")), None)
-    d = Decider(sys.argv[1], use_graphs=False); so = lambda s, q: d.system_one(s, q, layout=layout)["answers"]
+    d = Selectia(sys.argv[1], use_graphs=False); so = lambda s, q: d.system_one(s, q, layout=layout)["answers"]
     r = [so(p, ROUTER_Q) for p, _, _ in ROUTER]
     tier = sum(a["tier"]["choice"] == g for a, (_, g, _) in zip(r, ROUTER)) / len(ROUTER); tools = sum((a["tools"]["noul"] > 0.5) == t for a, (_, _, t) in zip(r, ROUTER)) / len(ROUTER)
     print(f"router   n={len(ROUTER)}: tier acc {tier:.3f}, needs-tools acc {tools:.3f}; misses:", [(p[:40], a["tier"]["choice"]) for a, (p, g, _) in zip(r, ROUTER) if a["tier"]["choice"] != g][:6])

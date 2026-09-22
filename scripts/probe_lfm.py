@@ -18,9 +18,9 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from transformers import AutoTokenizer                                                          # noqa: E402
-from decider_lfm.infer import Q, Example                                                        # noqa: E402
-from decider_lfm.model import DecisionModel, collate, pad_id                                    # noqa: E402
-from decider_lfm.prompt import MAX_OPTIONS, WIDE_MIN, build, label_capacity, label_table, letter_ids   # noqa: E402
+from selectia.infer import Q, Example                                                        # noqa: E402
+from selectia.model import DecisionModel, collate, pad_id                                    # noqa: E402
+from selectia.prompt import MAX_OPTIONS, WIDE_MIN, build, label_capacity, label_table, letter_ids   # noqa: E402
 
 BASES = ["LiquidAI/LFM2.5-2.6B-Base", "LiquidAI/LFM2.5-1.2B-Base",
          "LiquidAI/LFM2.5-350M-Base", "LiquidAI/LFM2.5-230M-Base"]

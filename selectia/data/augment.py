@@ -11,8 +11,8 @@ model has to handle.  All of it is derived from the existing examples; nothing h
   isolated            one yes/no row per level / option (systemone.ISOLATED): isolated level scoring
 """
 import collections, json, pickle, random, re, string
-from decider_lfm import data as D
-from decider_lfm.prompt import is_abstain_option
+from selectia import data as D
+from selectia.prompt import is_abstain_option
 
 FAMILIES = dict(
     affect=["sst2", "sst5", "imdb", "yelp", "amazon_stars", "tweet_sentiment", "cr_reviews", "fin_sentiment", "fin_phrasebank",
@@ -213,13 +213,13 @@ def narrow(e, rng, cap=10):
 
 def indexed(e):
     """Re-render a JSON-state example the way the API sends it: long arrays carry their element index."""
-    from decider_lfm.systemone import annotate_indices
+    from selectia.systemone import annotate_indices
     return D.Example(json.dumps(annotate_indices(json.loads(e.context)), ensure_ascii=False), e.qs, e.task)
 
 
 def isolated(e, q, tag):
     """One yes/no example per option of q: the option alone, without its number or its neighbours; "yes" only for the gold one."""
-    from decider_lfm.systemone import isolated_rows
+    from selectia.systemone import isolated_rows
     return [D.Example(e.context, [D.Q(text, opts, 1 if j == q.gold else 0)], tag) for j, (text, opts) in enumerate(isolated_rows(q.text, q.options))]
 
 

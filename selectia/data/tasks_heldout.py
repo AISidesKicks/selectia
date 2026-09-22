@@ -2,7 +2,7 @@
 All held out: no example of these datasets is trained on (dbpedia_l2/l3 share their source, Wikipedia
 abstracts, with the in-task 14-class dbpedia, but the label sets are different and much finer)."""
 import ast, re
-from decider_lfm.data.core import task, Example, Q, _ld, _sub, _cls, EVAL_CAP
+from selectia.data.core import task, Example, Q, _ld, _sub, _cls, EVAL_CAP
 
 NEW_TASKS = ["hwu64", "trec_fine", "dbpedia_l2", "dbpedia_l3", "quality_full"]
 

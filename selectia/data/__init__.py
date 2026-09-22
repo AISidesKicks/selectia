@@ -1,14 +1,14 @@
 """Task registry and data pipeline.
 
-    from decider_lfm import data as D
+    from selectia import data as D
     D.Example, D.Q                      one context + typed questions (option list, gold index)
     D.TASKS, D.load_task, D.load_all    ~95 public decision datasets behind one format (tasks_*.py register themselves)
     D.load_cache(path)                  a pickled (train examples, {task: eval examples}) pair
 
-    python -m decider_lfm.data.core                 download + convert every task    -> data/tasks.pkl
-    python -m decider_lfm.data.teacher_labels ...   label descriptions from a local teacher model
-    python -m decider_lfm.data.teacher_questions .. teacher-written custom questions / routing messages
-    python -m decider_lfm.data.mixture              the training mixture + probes    -> data/mixture.pkl, data/probes.pkl
+    python -m selectia.data.core                 download + convert every task    -> data/tasks.pkl
+    python -m selectia.data.teacher_labels ...   label descriptions from a local teacher model
+    python -m selectia.data.teacher_questions .. teacher-written custom questions / routing messages
+    python -m selectia.data.mixture              the training mixture + probes    -> data/mixture.pkl, data/probes.pkl
 """
 from .core import *                                                                  # noqa: F401,F403
 from .core import Q, Example, TASKS, task, load_cache, load_task, load_all, TRAIN_CAP, EVAL_CAP, SEED      # noqa: F401

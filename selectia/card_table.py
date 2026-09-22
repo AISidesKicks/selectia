@@ -1,4 +1,4 @@
-"""Fill RESULTS_TABLE in MODEL_CARD.md from eval.json files. usage: python -m decider_lfm.card_table zs_2b=runs/zs_2b zs_4b=runs/zs_4b final=runs/r2_full/final"""
+"""Fill RESULTS_TABLE in MODEL_CARD.md from eval.json files. usage: python -m selectia.card_table zs_2b=runs/zs_2b zs_4b=runs/zs_4b final=runs/r2_full/final"""
 import json, sys
 
 

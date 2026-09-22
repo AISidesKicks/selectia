@@ -14,11 +14,11 @@ fields), select (which of several records satisfies the rule), form (a UI elemen
 rendered the way accessibility snapshots are).  Rules are asked as choice, noul ("does this record satisfy ...") or score
 (thresholds as levels).  Ten domains; the last three and two families are held out for the probes.
 
-    python -m decider_lfm.data.rules --n 60000 --out data/rules.pkl          (writes train examples and probe sets)
+    python -m selectia.data.rules --n 60000 --out data/rules.pkl          (writes train examples and probe sets)
 """
 import argparse, json, pickle, random, string
-from decider_lfm.data.core import Example, Q
-from decider_lfm.systemone import render_state
+from selectia.data.core import Example, Q
+from selectia.systemone import render_state
 
 # ---------------------------------------------------------------- domains: field name -> (kind, generator)
 FIRST = ["Lucas", "Priya", "Mateo", "Aisha", "Noah", "Hana", "Ibrahim", "Sofia", "Elena", "Kenji", "Amara", "Diego", "Mei", "Tomás", "Zara", "Omar", "Ines", "Ravi"]
