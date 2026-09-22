@@ -41,7 +41,9 @@ are therefore a conservative upper bound on the wall clock.
 
 Measured with `scripts/bench_train.py` (bf16, `max_ctx 1536`, `max_tokens 16384`, AdamW `(0.9,0.95)`,
 `accum 2`). "ckpt" is `--grad_ckpt`. Throughput counts padded tokens, the same shape of work the
-trainer does.
+trainer does. The token budgets are the plan's numbers (staged core ~130M, full mixture ~455M) plus a
+first estimate for the YESMOM subset (~60M); the YESMOM figure is a guess until `data/tasks.pkl` and
+the real mixture exist, so treat that column as a placeholder to refresh.
 
 | model | settings | batch | tokens/s | s / optimizer step | peak VRAM | core (130M tok) | yesmom (60M tok) | full (455M tok) |
 |---|---|---|---|---|---|---|---|---|
