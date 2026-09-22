@@ -101,6 +101,12 @@ def main():
     evals_small = {k: v[:a.eval_limit] for k, v in evals.items()}
     if a.yesmom and a.none_prob > 0:
         raise SystemExit("--yesmom trains a binary head: run with --none_prob 0")
+    if not a.yesmom and train and all(len(q.options) == 2 and q.options[0].lower().startswith("no") and q.options[1].lower().startswith("yes")
+                                      for e in train[:2000] for q in e.qs):
+        # forgetting --yesmom still trains a correct binary head but writes a config that lets the runtime
+        # offer multi-option questions to it, so say so loudly rather than silently shipping the wrong contract
+        log("[warn] the mixture is Noul-only but --yesmom was not passed: the saved selectia_config.json will "
+            "not mark the model as binary. Add --yesmom to write the runtime contract.")
     device = a.device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = DecisionModel(a.model, grad_ckpt=a.grad_ckpt).to(device)
     tok = model.tok
