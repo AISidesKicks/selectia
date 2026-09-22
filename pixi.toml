@@ -15,3 +15,13 @@ SCRATCH = "$PIXI_PROJECT_ROOT/scratch"
 
 [dependencies]
 python = "==3.12"
+
+[pypi-dependencies]
+torch = ">=2.14.0, <3"
+transformers = ">=5"
+numpy = "<2"
+huggingface-hub = ">=1.32.0, <2"
+datasets = ">=5.0.1, <6"
+accelerate = ">=1.15.0, <2"
+scikit-learn = ">=1.9.1, <2"
+pytest = ">=9.1.1, <10"
