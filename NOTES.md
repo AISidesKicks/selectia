@@ -59,10 +59,33 @@ What does not fit on this card:
   checkpointing is not a 2.6B-only concern, it is the default for any full-size batch here.
 - 1.2B with AdamW is OOM, and it is OOM at `max_tokens 4096` too. The batch size is not the problem:
   the weights (2.4 GB bf16) + grads (2.4 GB) + AdamW state (2 x 4 bytes x 1.17B = 9.4 GB) are about
-  14 GB before any activation. A 12 GB card needs 8-bit Adam, an SGD/AdaFactor run, or offload.
+  14 GB before any activation. 8-bit Adam fixes this, see below.
 - 2.6B with AdamW is OOM. Params + grads are 10.4 GB bf16 and the AdamW state is 20.8 GB, so a full
   fine-tune wants a 40-80 GB card or sharding, matching the plan's "80GB-class" note. Forward plus
   backward alone already takes 11.3 GB for a single 1408-token sequence.
+
+### 8-bit Adam: it saves the 1.2B, not the 2.6B
+
+Measured with `bitsandbytes` 0.50.2 (`pixi add --pypi bitsandbytes`). The 8-bit optimizer state is
+**2.03 bytes/param** measured on this build (`state1`/`state2` uint8 plus block absmax and qmap), against
+8 bytes/param for fp32 AdamW, so a 1.17B model drops from 9.4 GB of optimizer state to 2.4 GB.
+
+| model | optimizer | batch | peak VRAM | tokens/s | verdict |
+|---|---|---|---|---|---|
+| 1.2B | AdamW8bit + ckpt | 11x1408 | **9.57 GB** | 4997 | fits, ~2 GB headroom |
+| 2.6B | AdamW8bit + ckpt | 1x1408 | - | - | OOM (needs ~15.7 GB) |
+| 2.6B | PagedAdamW8bit + ckpt | 1x1408 | - | - | CUDA illegal memory access, not usable |
+
+So the 1.2B full fine-tune is now a local job: 130M tokens of staged `core` mixture is about 7.2 h,
+the YESMOM subset about 3.3 h, the full 455M mixture about 25 h, at 16k padded tokens per micro-batch.
+The throughput cost of 8-bit over no optimizer at all is about 5% (4997 vs 5280 tokens/s), which is
+cheap. `train.py` takes `--optim adamw8bit` and a 1.2B smoke run completes on the 4070.
+
+The 2.6B does not fit: params + grads are 10.4 GB bf16 before any optimizer state, and 8-bit state adds
+5.3 GB, so it needs about 17 GB with checkpointing. That is a 24 GB card with 8-bit Adam, or a 40-80 GB
+card with fp32 AdamW. `PagedAdamW8bit`, which would page the state to CPU, raises a CUDA illegal memory
+access on this bitsandbytes/torch/driver combination (0.50.2 / 2.14+cu130 / CUDA 13.2); worth retrying
+after a version bump, not worth chasing now.
 
 What this means for the plan: YESMOM (230M then 350M) trains locally, 230M in about two hours for
 the staged budget and 350M in about three. The full-decision 1.2B and 2.6B runs need a bigger GPU or
