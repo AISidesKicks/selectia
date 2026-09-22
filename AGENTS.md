@@ -11,13 +11,13 @@ Today's harsh reality: very smart AI will cost millions, we are helping to choos
 
 The tone for documenting is informal, but enough technical so it enables exploring options.
 
-## CMOD python environment (isolated with pixi `sclt`)
+## SCLT python environment (isolated with pixi `sclt`)
 
 We are running inside "pixi shell" - check it before implementing plans in code.
 Before installing Python packages double-check "pixi info | grep Name" returns 'sclt'
 Pixi Python env has a preinstalled set of tools — suggest set expansion, if needed.
 
-## CMOD docker environment (isolated with prefix `slct-`)
+## SCLT docker environment (isolated with prefix `slct-`)
 
 All project related containers, volumes, networks and so on must have 'slct-' prefix, even test and temp ones!
 Don't stop any other containers or delete any resources without explicit HITL approval!
