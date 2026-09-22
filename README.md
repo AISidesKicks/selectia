@@ -21,7 +21,7 @@ fork's own name. The write-ups live in `NOTES.md` and `plans/INTEND.md`.
 | rendering | narrow `(A)..(J)`, or wide single-token labels up to 255 | two option tokens, no label table |
 | why this shape | reading rubrics and recalling knowledge needs capacity | a verification is a much smaller function |
 | intended use | routing, classification, rubric scoring, incident triage | cheap on-device gating: policy checks, safety, entailment, answerability, form-fill `skip` |
-| fits on | a 40-80 GB class GPU for a full fine-tune (12 GB is not enough for the 1.2B) | 3-4 GB of VRAM, trains on one RTX 4070 |
+| fits on | the 1.2B on a 12 GB card with 8-bit Adam; the 2.6B on 24 GB with 8-bit Adam, or 40 GB+ with fp32 AdamW | 3-4 GB of VRAM, trains on one RTX 4070 |
 
 YESMOM is not a different architecture. It is the `Noul` question type as the *only* supported
 type, so the readout collapses to the `no` / `yes` option tokens and the tiny bases never have to
@@ -89,38 +89,85 @@ Work in progress, and honest about it.
 - Done: the port (`selectia/`), the prompt/readout/label-capacity work, the staged `core`
   and Noul-only `yesmom` data modes, the Phase 0 probe, tests (19 passing), and measured training
   budgets on one RTX 4070.
-- Done: two smoke runs on the 230M base (full-decision and `--yesmom`) complete a real optimizer loop,
-  save the weights, and write a `selectia_config.json` that the runtime reads back.
-- Not done: no trained or released weights yet, so no accuracy or ECE numbers. The next step is
+- Done: smoke runs on the 230M and 1.2B bases (full-decision, `--yesmom`, and 8-bit Adam) complete a
+  real optimizer loop, save the weights, and write a `selectia_config.json` that the runtime reads back.
+- Done: a benchmark harness (`selectia/bench/jevbench_public.py`) that scores our readout on JevBench's
+  public items with JevBench's own scoring code, plus the zero-shot baselines below.
+- Not done: no trained or released weights yet, so no selectia accuracy or ECE numbers. The next step is
   building `data/tasks.pkl` (`python -m selectia.data.core`) and the real mixture.
 
-On one 12 GB GPU: YESMOM trains (230M about 2 h, 350M about 3 h for the staged token budget). The
-1.2B and 2.6B full-decision runs need a bigger card or an 8-bit optimizer. The measurements, and what
-does not fit, are in `NOTES.md`.
+## Where the bases stand (zero-shot, JevBench public items)
+
+JevBench is Benchmark Heaven's decision-model benchmark; 231 of its 534 decisions are public, so the
+official JevBench Score cannot be reproduced from its repository. These are the LFM2.5 bases read
+through our readout with **no training at all**, scored by JevBench's own code. It is the floor the
+fine-tunes have to beat, not a selectia result.
+
+| model | all 231 | easy | hard | Brier (hard) | ECE (hard) | p50 (hard) | peak VRAM |
+|---|---|---|---|---|---|---|---|
+| LFM2.5-230M-Base | 0.307 | 0.333 | 0.297 | 0.888 | 0.354 | 0.016 s | 0.63 GB |
+| LFM2.5-350M-Base | 0.307 | 0.313 | 0.297 | 0.745 | 0.196 | 0.018 s | 0.93 GB |
+| LFM2.5-1.2B-Base | 0.338 | 0.313 | 0.342 | 0.731 | 0.210 | 0.034 s | 2.68 GB |
+| LFM2.5-2.6B-Base | 0.541 | 0.917 | 0.387 | 0.852 | 0.316 | 0.071 s | 5.79 GB |
+
+For scale, the closest published entrant `decider-2b` (a trained 1.9B readout) scores easy 1.000 and
+hard 0.473. The 2.6B base is already within 9 points on hard; the 1.2B base is near chance.
+
+Two findings worth keeping: the 2.6B is more accurate than the 1.2B *and worse calibrated* (it is
+confidently wrong), and one fitted temperature fixes most of it - every base wants T around 2.3 to 2.5
+and ECE drops 2.5x to 3x. Full tables, per-family breakdowns, option-order sensitivity and the latency
+and token numbers are in `NOTES.md`.
+
+## What fits on one 12 GB RTX 4070
+
+| run | settings | peak VRAM | time for the staged budget |
+|---|---|---|---|
+| YESMOM 230M | fp32 AdamW | 3.1 GB | about 2 h |
+| YESMOM 350M | fp32 AdamW | 4.3 GB | about 3 h |
+| 1.2B full decisions | `--optim adamw8bit --grad_ckpt` | 9.6 GB | about 7 h |
+| 2.6B full decisions | - | does not fit | needs 24 GB with 8-bit Adam, or 40 GB+ with fp32 |
+
+8-bit Adam is the difference: it stores 2.03 bytes per parameter of optimizer state instead of 8, which
+is 9.4 GB down to 2.4 GB on the 1.2B, for about a 5% throughput cost. The 2.6B stays out of reach on
+this card under any optimizer.
 
 ## Running it
 
 ```bash
 pixi run python scripts/probe_lfm.py                    # Phase 0: load the bases, record label capacity
 pixi run python -m pytest tests -q                      # CPU tests, no model needed
-pixi run python scripts/bench_train.py --model LiquidAI/LFM2.5-230M-Base --grad_ckpt
+
+# what a training step costs on your card, before committing to a long run
+pixi run python scripts/bench_train.py --model LiquidAI/LFM2.5-1.2B-Base --grad_ckpt --optim adamw8bit
+
+# train, then measure
 scripts/train.sh yesmom                                 # staged Noul-only run on the 230M base
 scripts/train.sh core                                   # staged full-decision run
 scripts/evaluate.sh runs/selectia_core/model             # accuracy, NLL, Brier, ECE, AURC, probes
+pixi run python -m selectia.bench.jevbench_public --src scratch/jevbench-src \
+    --models runs/selectia_core/model --device cuda --fit-temperature
 ```
 
-Everything runs inside the `sclt` pixi environment (Python 3.12, torch, transformers 5, numpy<2). Run
-`pixi shell` once, or prefix with `pixi run`.
+`train.sh` picks the base from the mode (`core` is the 1.2B, `full` the 2.6B) and can be pointed at
+another one with a second argument. The `core` recipe already uses `--grad_ckpt --optim adamw8bit`,
+which is what makes it fit 12 GB; override with `OPTIM=adamw` on a 40 GB+ card. Everything runs inside
+the `sclt` pixi environment (Python 3.12, torch, transformers 5, numpy<2). Run `pixi shell` once, or
+prefix with `pixi run`.
+
+The JevBench harness itself is not vendored: clone it next to the scratch dir and pass `--src`, as
+above (`git clone --depth 1 https://github.com/fstandhartinger/jevbench scratch/jevbench-src`).
 
 ## Layout
 
 ```
 selectia/   the port: prompt.py, model.py, systemone.py, infer.py, train.py, evaluate.py,
-               data/ (the task registry, the mixture and the augmentations), probes/
+               data/ (the task registry, the mixture and the augmentations), probes/,
+               bench/ (public_suite.py, jevbench_public.py)
 scripts/       probe_lfm.py, bench_train.py, train.sh, evaluate.sh, stage_release.py, upload_hf.py
 tests/         CPU tests for the request/answer layer, the prompt layouts and the rule data
 plans/         INTEND.md, the implementation plan
-NOTES.md       findings, the label-capacity table and the training budget measurements
+NOTES.md       findings, the label-capacity table, the benchmark results and the memory budgets
+.env.example   the HF write token for pushing releases; copy to .env, which is gitignored
 ```
 
 ## Licensing

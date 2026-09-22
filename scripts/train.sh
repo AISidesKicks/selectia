@@ -1,7 +1,8 @@
 #!/bin/bash
 # The reference recipe on LFM2.5.  PY defaults to the pixi interpreter (`pixi run scripts/train.sh ...`).
-#   scripts/train.sh full        2.6B, full typed decisions, staged core mixture (grad ckpt on)
-#   scripts/train.sh core        1.2B, full typed decisions, staged core mixture
+#   scripts/train.sh full        2.6B, full typed decisions, staged core mixture (grad ckpt on, fp32 AdamW)
+#   scripts/train.sh core        1.2B, full typed decisions, staged core mixture (grad ckpt on, 8-bit Adam: fits a 12 GB card)
+#                                OPTIM=adamw overrides the optimizer, e.g. on a 40 GB+ card
 #   scripts/train.sh yesmom      Noul-only binary head on the 350M / 230M bases
 #   scripts/train.sh delta M     continue from an existing checkpoint M on the new formats + a replay sample
 set -e; cd "$(dirname "$0")/.."; export PYTHONUNBUFFERED=1
@@ -13,8 +14,8 @@ MIX=${MIX:-data/mixture_$MODE.pkl}
 
 EXTRA="--max_ctx 1536 --warmup 200 --max_tokens 16384 --accum 2 --none_prob 0.1 --schema_first_prob 0.5"
 case "$MODE" in
-  full)   INIT=${INIT:-LiquidAI/LFM2.5-2.6B-Base}; EXTRA="$EXTRA --max_options 255 --grad_ckpt";;
-  core)   INIT=${INIT:-LiquidAI/LFM2.5-1.2B-Base}; EXTRA="$EXTRA --max_options 255";;
+  full)   INIT=${INIT:-LiquidAI/LFM2.5-2.6B-Base}; EXTRA="$EXTRA --max_options 255 --grad_ckpt --optim ${OPTIM:-adamw}";;
+  core)   INIT=${INIT:-LiquidAI/LFM2.5-1.2B-Base}; EXTRA="$EXTRA --max_options 255 --grad_ckpt --optim ${OPTIM:-adamw8bit}";;
   yesmom) INIT=${INIT:-LiquidAI/LFM2.5-230M-Base}; EXTRA="--max_ctx 1536 --warmup 200 --max_tokens 16384 --accum 2 --none_prob 0 --schema_first_prob 0 --max_options 2 --yesmom";;
   delta)  EXTRA="$EXTRA --max_options 255"; [ -n "$INIT" ] || { echo "delta needs a checkpoint: scripts/train.sh delta M"; exit 2; };;
   *) echo "unknown mode $MODE (full|core|yesmom|delta)"; exit 2;;
