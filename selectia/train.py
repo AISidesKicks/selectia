@@ -1,5 +1,10 @@
 """Stage 1: proper-scoring-rule fine-tune (CE, optionally + Brier) on the multi-task decision mixture."""
 import argparse, json, math, os, pickle, random, time
+
+# Measured on the 4070: without this the allocator leaves ~0.7 GB reserved-but-unallocated and a run that
+# fits by the numbers OOMs in backward. Set before torch's first CUDA allocation, which reads it lazily.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import numpy as np, torch, torch.nn.functional as F
 from selectia.model import DecisionModel, collate, pad_id
 from selectia.prompt import build, MAX_OPTIONS, label_capacity
