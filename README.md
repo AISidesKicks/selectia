@@ -142,10 +142,10 @@ Planned Hugging Face repositories, nothing published yet:
 
 | variant | repository | base |
 |---|---|---|
-| full typed decisions | `<user>/selectia-2.6b` | `LiquidAI/LFM2.5-2.6B-Base` |
-| full typed decisions | `<user>/selectia-1.2b` | `LiquidAI/LFM2.5-1.2B-Base` |
-| YESMOM | `<user>/selectia-yesmom-350m` | `LiquidAI/LFM2.5-350M-Base` |
-| YESMOM | `<user>/selectia-yesmom-230m` | `LiquidAI/LFM2.5-230M-Base` |
+| full typed decisions | `AISidesKicks/selectia-2.6b` | `LiquidAI/LFM2.5-2.6B-Base` |
+| full typed decisions | `AISidesKicks/selectia-1.2b` | `LiquidAI/LFM2.5-1.2B-Base` |
+| YESMOM | `AISidesKicks/selectia-yesmom-350m` | `LiquidAI/LFM2.5-350M-Base` |
+| YESMOM | `AISidesKicks/selectia-yesmom-230m` | `LiquidAI/LFM2.5-230M-Base` |
 
 `scripts/stage_release.py <model dir> runs/release/selectia-2.6b` builds the upload folder (weights,
 tokenizer, `selectia_config.json`, the inference-only subset of `selectia/`, `MODEL-LICENSE`, card),
