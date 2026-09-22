@@ -52,7 +52,9 @@ def main():
     ap.add_argument("--accum", type=int, default=2, help="gradient accumulation, for the optimizer-step timing")
     ap.add_argument("--steps", type=int, default=12)
     ap.add_argument("--warmup", type=int, default=3)
-    ap.add_argument("--optim", default="adamw", choices=["adamw", "none"])
+    ap.add_argument("--optim", default="adamw", choices=["adamw", "adamw8bit", "adamw8bit_paged", "none"],
+                    help="adamw8bit needs bitsandbytes: ~2 bytes/param of optimizer state instead of 8. "
+                         "adamw8bit_paged also pages that state to CPU, trading PCIe traffic for VRAM")
     ap.add_argument("--grad_ckpt", action="store_true")
     ap.add_argument("--dtype", default="bfloat16", choices=["bfloat16", "float32", "float16"])
     ap.add_argument("--max_options", type=int, default=10)
@@ -76,7 +78,16 @@ def main():
     print(f"[bench] batch {rows} x {cols} = {rows*cols} padded tokens, {len(b['slot_idx'])} slots", flush=True)
 
     params = [p for p in m.parameters() if p.requires_grad]
-    opt = torch.optim.AdamW(params, lr=1e-5, weight_decay=0.0, betas=(0.9, 0.95)) if a.optim == "adamw" else None
+    if a.optim == "adamw":
+        opt = torch.optim.AdamW(params, lr=1e-5, weight_decay=0.0, betas=(0.9, 0.95))
+    elif a.optim == "adamw8bit":
+        import bitsandbytes as bnb
+        opt = bnb.optim.AdamW8bit(params, lr=1e-5, weight_decay=0.0, betas=(0.9, 0.95))
+    elif a.optim == "adamw8bit_paged":
+        import bitsandbytes as bnb
+        opt = bnb.optim.PagedAdamW8bit(params, lr=1e-5, weight_decay=0.0, betas=(0.9, 0.95))
+    else:
+        opt = None
     t0 = None
     for s in range(a.warmup + a.steps):
         if s == a.warmup:

@@ -74,6 +74,9 @@ def main():
     ap.add_argument("--schema_first_prob", type=float, default=0.0, help="share of examples rendered questions-first (cacheable schema prefix)")
     ap.add_argument("--max_options", type=int, default=0, help="options kept per question (0 = auto: the tokenizer's label capacity, capped at 255; 10 = original narrow protocol)")
     ap.add_argument("--grad_ckpt", action="store_true", help="activation checkpointing (needed for the 2.6B)")
+    ap.add_argument("--optim", default="adamw", choices=["adamw", "adamw8bit", "adamw8bit_paged"],
+                    help="adamw8bit is what fits the 1.2B on a 12 GB card; the paged variant crashes on this "
+                         "bitsandbytes/torch build, see NOTES.md")
     ap.add_argument("--device", default="", help="cuda | cpu (default: cuda when available)")
     ap.add_argument("--yesmom", action="store_true", help="YESMOM: Noul-only binary head; marks selectia_config.json")
     ap.add_argument("--isolated_levels", default=None, action=argparse.BooleanOptionalAction, help="Score levels judged one per row (default on; off for --yesmom)")
@@ -119,7 +122,13 @@ def main():
     ntok = sum(len(it["ids"]) for it in items); nq = sum(len(it["slots"]) for it in items)
     log(f"[data] {len(items)} items, {nq} questions, {ntok/1e6:.1f}M tokens, tokenized in {time.time()-t0:.0f}s")
 
-    opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=a.wd, betas=(0.9, 0.95))
+    if a.optim == "adamw":
+        opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=a.wd, betas=(0.9, 0.95))
+    else:                                   # 8-bit state: ~2 bytes/param instead of 8, which is what makes the 1.2B fit 12 GB
+        import bitsandbytes as bnb
+        cls = bnb.optim.AdamW8bit if a.optim == "adamw8bit" else bnb.optim.PagedAdamW8bit
+        opt = cls(model.parameters(), lr=a.lr, weight_decay=a.wd, betas=(0.9, 0.95))
+        log(f"[optim] {a.optim} (bitsandbytes {bnb.__version__})")
     steps_per_epoch = math.ceil(len(batches_by_tokens(items, a.max_tokens, random.Random(0))) / a.accum)
     total = int(steps_per_epoch * a.epochs)
     log(f"[sched] {steps_per_epoch} optimizer steps/epoch, {total} total")
