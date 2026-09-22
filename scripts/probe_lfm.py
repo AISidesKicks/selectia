@@ -44,6 +44,10 @@ def probe_tokenizer(name):
                      letter_ids=letter_ids(tok))
 
 
+def _on(b, dev):
+    return {k: (v.to(dev) if torch.is_tensor(v) else v) for k, v in b.items()}
+
+
 @torch.no_grad()
 def probe_readout(m, tok, cap, noul_only):
     """Toy narrow / wide / noul prompts through slot_logits. Returns a dict of shapes and checks."""
@@ -61,7 +65,7 @@ def probe_readout(m, tok, cap, noul_only):
         if noul_only and tag != "noul":
             continue
         it = build(ex, tok, _Keep(), max_options=mo)
-        b = collate([it], pad_id(tok))
+        b = _on(collate([it], pad_id(tok)), next(m.parameters()).device)
         logits = m.slot_logits(b["input_ids"], b["attention_mask"], b["slot_idx"], b["slot_batch"], b["nopts"])
         probs = torch.softmax(logits.float(), -1)[0]
         finite = int(torch.isfinite(logits[0, : it["nopts"][0]]).sum())
@@ -81,7 +85,7 @@ def probe_readout(m, tok, cap, noul_only):
 def probe_determinism(m, tok):
     ex = Example("Determinism check.", [Q("Pick one.", ["a", "b", "c"], 1)])
     it = build(ex, tok, _Keep(), max_options=10)
-    b = collate([it], pad_id(tok))
+    b = _on(collate([it], pad_id(tok)), next(m.parameters()).device)
     a = torch.softmax(m.slot_logits(b["input_ids"], b["attention_mask"], b["slot_idx"], b["slot_batch"], b["nopts"]).float(), -1)
     c = torch.softmax(m.slot_logits(b["input_ids"], b["attention_mask"], b["slot_idx"], b["slot_batch"], b["nopts"]).float(), -1)
     return bool(torch.equal(a, c))
@@ -92,7 +96,9 @@ def load_model(name, dtype, device):
     assert hasattr(m.lm, "model") and hasattr(m.lm, "lm_head")
     tied = bool(getattr(m.lm.config, "tie_word_embeddings", False))
     same = m.lm.lm_head.weight.data_ptr() == m.lm.model.embed_tokens.weight.data_ptr()
-    h = m.lm.model(input_ids=torch.tensor([[1, 2, 3]]), attention_mask=torch.ones(1, 3, dtype=torch.long)).last_hidden_state
+    dev = next(m.parameters()).device
+    ids = torch.tensor([[1, 2, 3]], device=dev)
+    h = m.lm.model(input_ids=ids, attention_mask=torch.ones(1, 3, dtype=torch.long, device=dev)).last_hidden_state
     return m, dict(tie_word_embeddings=tied, tied_ptr_equal=same, last_hidden_state=tuple(h.shape), hidden=h.shape[-1])
 
 
@@ -118,10 +124,14 @@ def main():
             dev = a.device
             if dev == "auto":
                 dev = "cuda" if torch.cuda.is_available() else "cpu"
+            if dev == "cuda":
+                torch.cuda.empty_cache()
             try:
                 m, mrep = load_model(name, dtype, dev)
-            except torch.cuda.OutOfMemoryError:
-                print(f"[load] OOM on {dev}, falling back to cpu", flush=True)
+            except Exception as e:                                  # OOM and friends: fall back, never abort the probe
+                if dev == "cpu":
+                    raise
+                print(f"[load] {type(e).__name__} on {dev}: {str(e).splitlines()[0]}; falling back to cpu", flush=True)
                 torch.cuda.empty_cache(); dev = "cpu"
                 m, mrep = load_model(name, dtype, dev)
             rep["load"] = dict(mrep, device=dev)
@@ -131,7 +141,7 @@ def main():
                   f"ptr_equal={mrep['tied_ptr_equal']} deterministic={rep['deterministic']}", flush=True)
             print(f"[readout] {json.dumps(rep['readout'])}", flush=True)
             del m
-            if dev == "cuda":
+            if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         rep["seconds"] = round(time.time() - t0, 1)
         report["models"][name] = rep
