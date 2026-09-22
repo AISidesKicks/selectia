@@ -81,11 +81,36 @@ the YESMOM subset about 3.3 h, the full 455M mixture about 25 h, at 16k padded t
 The throughput cost of 8-bit over no optimizer at all is about 5% (4997 vs 5280 tokens/s), which is
 cheap. `train.py` takes `--optim adamw8bit` and a 1.2B smoke run completes on the 4070.
 
-The 2.6B does not fit: params + grads are 10.4 GB bf16 before any optimizer state, and 8-bit state adds
-5.3 GB, so it needs about 17 GB with checkpointing. That is a 24 GB card with 8-bit Adam, or a 40-80 GB
-card with fp32 AdamW. `PagedAdamW8bit`, which would page the state to CPU, raises a CUDA illegal memory
-access on this bitsandbytes/torch/driver combination (0.50.2 / 2.14+cu130 / CUDA 13.2); worth retrying
-after a version bump, not worth chasing now.
+The 2.6B does not fit: params + grads are 10.79 GB bf16 before any optimizer state, and 8-bit state adds
+5.47 GB, so its fixed cost alone is 16.26 GB. `PagedAdamW8bit`, which would page that state to CPU,
+raises a CUDA illegal memory access on this bitsandbytes/torch/driver combination (0.50.2 / 2.14+cu130 /
+CUDA 13.2); worth retrying after a version bump, not worth chasing now.
+
+### How big a GPU
+
+Full fine-tune, bf16 weights and grads, gradient checkpointing, activation cost measured on the 4070
+(2.6B: 1408 tokens cost 0.55 GB over the fixed cost; 1.2B: 0.162 GB per 1000 tokens in the 8-bit run).
+
+| model | optimizer | fixed (params + grads + state) | + activations | smallest card |
+|---|---|---|---|---|
+| 1.2B | AdamW8bit | 7.06 GB | 0.162 GB / 1k tok | **12 GB** (measured 9.57 GB at 16k tok) |
+| 2.6B | AdamW8bit | 16.26 GB | 0.392 GB / 1k tok | **24 GB** (17.9 GB at 4k, 19.5 at 8k, 22.7 at 16k) |
+| 2.6B | AdamW fp32 | 32.36 GB | 0.392 GB / 1k tok | 40 GB tight, 48 GB comfortable |
+
+Read that as:
+
+- **1.2B: any 12 GB card**, which is this machine. 8-bit Adam is mandatory (fp32 AdamW needs 14.04 GB
+  fixed and OOMs here).
+- **2.6B: 24 GB minimum** (RTX 3090/4090, L4, A10G), and only with 8-bit Adam, which saves 16.1 GB of
+  state (21.58 down to 5.47 GB). At 24 GB keep `max_tokens` at 8k for headroom or 16k to use it all.
+- **16 GB cards do not work at all** for the 2.6B under any optimizer: the fixed 16.26 GB exceeds the
+  card before a single activation.
+- **fp32 AdamW for the 2.6B wants 40 GB or more** (A100 40 GB tight, 48 GB L40S/A6000 comfortable,
+  80 GB A100/H100 with no constraints). That is the plan's "80GB-class" note, and 8-bit Adam is what
+  brings the requirement down to a rentable single 24 GB card.
+- Rented time at the measured 2457 tokens/s for the 2.6B: the staged `core` budget of 130M tokens is
+  about 15 h, the full 455M mixture about 53 h, on a 4070-class card. A 4090 has about twice the memory
+  bandwidth, so roughly half that.
 
 What this means for the plan: YESMOM (230M then 350M) trains locally, 230M in about two hours for
 the staged budget and 350M in about three. The full-decision 1.2B and 2.6B runs need a bigger GPU or
