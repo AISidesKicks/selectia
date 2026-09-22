@@ -134,6 +134,30 @@ combination, so retest rather than assume), and whether `causal_conv1d` has a Bl
 without it LFM2's short conv falls back to the reference PyTorch kernel. Also note the 5090 is a 575 W
 card, which is a PSU and cooling decision, not a software one.
 
+### RTX PRO 6000 Blackwell (96 GB, sm_120)
+
+Same compute capability as the 5090, so the same `cu130` torch wheel and the same driver family apply.
+The difference is that 96 GB removes the memory constraints instead of just relaxing them:
+
+| config | fixed | 16k tok | 32k tok | 64k tok | 128k tok |
+|---|---|---|---|---|---|
+| 2.6B, fp32 AdamW + ckpt | 32.36 GB | 38.8 | 45.2 | 58.1 | 83.7 |
+| 1.2B, fp32 AdamW + ckpt | 14.04 GB | 16.6 | 19.4 | 24.7 | 35.3 |
+
+So on 96 GB: **8-bit Adam becomes optional rather than required**, the plan's exact 16k-token config
+runs with 57 GB to spare, and the batch can grow to the model's full 128k position limit. No sharding,
+no offload, no optimizer substitution - the upstream recipe verbatim.
+
+Keep gradient checkpointing on anyway. Measured on the 230M, dropping it costs about **29x** the
+activation memory per token (0.020 GB/1k with it, 0.587 GB/1k without), so a 96 GB card is better spent
+on a longer batch than on turning checkpointing off. Bandwidth is the same class as the 5090 (~1.79
+TB/s), so 96 GB buys headroom, not speed: throughput stays roughly 3x this 4070.
+
+Two caveats on the card itself: it ships in a Max-Q (300 W) and a Workstation Edition (600 W) variant
+with a real clock difference, and 600 W is a PSU and cooling decision. If the 2.6B is the target and
+buying is on the table, this is the no-constraints option; a rented 24 GB card plus 8-bit Adam reaches
+the same place more cheaply for a one-off run.
+
 What this means for the plan: YESMOM (230M then 350M) trains locally, 230M in about two hours for
 the staged budget and 350M in about three. The full-decision 1.2B and 2.6B runs need a bigger GPU or
 an 8-bit optimizer, which is exactly the trade the educational write-up can show.
