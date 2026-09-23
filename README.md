@@ -151,28 +151,34 @@ Two findings worth keeping:
   the score carries a Calibration axis separate from Intelligence.
 - One fitted temperature fixes most of it: every base wants T around 2.3 to 2.5 and ECE drops 2.5x to 3x.
 
-### The first trained checkpoint
+### The trained 1.2B checkpoints
 
-`selectia-1.2b-teacher` is 55 minutes of fine-tuning on the shipped `teacher_data/` alone, with no public
-datasets, on one RTX 4070.
+`selectia-1.2b-teacher` is 55 minutes on the shipped `teacher_data/` alone, no public datasets.
+`selectia-core-1.2b` is the real thing: 11.6 hours on the staged core mixture, 695,795 examples, ~187M
+tokens, one RTX 4070.
 
-| public items | 1.2B base | selectia-1.2b-teacher |
-|---|---|---|
-| all 231 | 0.338 | **0.628** |
-| original (72) | 0.347 | **0.708** |
-| easy (48) | 0.313 | **1.000** |
-| hard (111) | 0.342 | **0.414** |
-| Brier / ECE, all | 0.758 / 0.217 | 0.558 / 0.193 |
-| Brier / ECE, hard | 0.731 / 0.210 | 0.894 / 0.343 |
-| ECE, hard, after one fitted T | 0.081 | 0.097 |
-| paraphrase agree / both correct | 0.833 / 0.306 | 0.722 / 0.583 |
+| public items | 1.2B base | 1.2b-teacher | **core-1.2b** |
+|---|---|---|---|
+| all 231 | 0.338 | 0.628 | **0.662** |
+| original (72) | 0.347 | 0.708 | **0.778** |
+| easy (48) | 0.313 | 1.000 | 1.000 |
+| hard (111) | 0.342 | 0.414 | **0.441** |
+| Brier / ECE, all | 0.758 / 0.217 | 0.558 / 0.193 | **0.457 / 0.113** |
+| Brier / ECE, hard | 0.731 / 0.210 | 0.894 / 0.343 | **0.731 / 0.199** |
+| fitted T | 2.50 | 2.50 | **1.55** |
+| paraphrase agree / both correct | 0.833 / 0.306 | 0.722 / 0.583 | **0.833 / 0.694** |
 
-For scale, the closest published entrant `decider-2b` (a trained 1.9B readout) scores easy 1.000 and hard
-0.473. So a 1.2B trained on 14M tokens is within 6 points of a 1.9B trained on roughly 455M.
+On its own held-out sets the core model scores 0.708 accuracy with ECE 0.103.
 
-Accuracy roughly doubles and the easy tier becomes perfect, but **hard-tier calibration gets worse while
-hard-tier accuracy improves**: the model learns to be confident on the shapes it saw. That gap is the
-argument for the held-out calibration gate in `plans/INTEND.md`.
+For scale, `decider-2b` (a trained 1.9B readout) scores easy 1.000 and hard 0.473. So `core-1.2b` is 3
+points behind on hard accuracy, but **ahead on hard calibration**: ECE 0.199 against 0.322 and Brier 0.731
+against 0.806.
+
+The interesting part is the middle column. Training on teacher data alone made the model confidently
+wrong on the hard tier (ECE 0.210 at the base, 0.343 after teacher training). The full mixture fixes it
+and goes past the base to 0.199, and the fitted temperature drops from 2.50 to 1.55, which says the same
+thing from the other side: there is much less overconfidence left to correct. That is the held-out
+calibration gate in `plans/INTEND.md` doing its job.
 
 ### YESMOM, both sizes trained
 
@@ -255,16 +261,18 @@ Work in progress, and honest about it.
 - The port (`selectia/`), the prompt and readout layer, the label-capacity work, the staged `core` and
   Noul-only `yesmom` data modes, the Phase 0 probe, and 19 passing CPU tests.
 - `data/tasks.pkl`: 968,970 train examples from 97 of the 99 registered public datasets.
-- `data/mixture_core.pkl`: 695,795 train examples, roughly 187M tokens, plus 73 probe sets.
-- The first trained checkpoint, `selectia-1.2b-teacher`, benchmarked above.
+- `data/mixture_core.pkl`: 695,795 train examples, roughly 187M tokens, plus 73 probe sets. The Noul
+  version is `data/mixture_yesmom.pkl`, 279,032 rows / 38.9M tokens, class-balanced.
+- Four trained checkpoints, all benchmarked above: `selectia-1.2b-teacher` (55 min),
+  `selectia-core-1.2b` (11.6 h), `yesmom-230m` (35 min) and `yesmom-350m` (47 min).
 - A JevBench harness (`selectia/bench/jevbench_public.py`) that scores our readout with JevBench's code.
-- Measured memory budgets for every size on a 12 GB card.
+- `gpu_watch.py` (NVML sampling) and the memory budgets for every size on a 12 GB card.
 
 **Not done**
 
 - No published weights, and no 2.6B run.
-- The staged `core` mixture is built but not yet trained on. At the measured 5200 tokens/s, 187M tokens is
-  about **10 hours** on the 4070.
+- The probes, batteries and independence suites have not been run on `selectia-core-1.2b` yet, so its
+  picture is the regression eval and JevBench only.
 - Two registry tasks do not build: `games` needs an unshipped `data/mario.pkl`, and `trec_fine` was fixed
   by reading its raw test file (see `NOTES.md`).
 

@@ -418,6 +418,56 @@ non-Noul 2-option question, a `choice` schema, and a 3-option question are all r
 The `yesmom: true` flag is what enforces this, which is why the training run needs `--yesmom`; without it
 the head is still binary but the runtime would offer it multi-option questions.
 
+## selectia-core-1.2b: the staged full-decision model (2026-09-23)
+
+The first model trained on the real mixture. 8,975 optimizer steps over 695,795 examples (~187M tokens),
+one epoch, lr 1e-5 with 200-step warmup, `max_tokens 12288 --accum 2`, `max_ctx 1536`, `none_prob 0.1`,
+`schema_first_prob 0.5`, `max_options 255`, gradient checkpointing, 8-bit Adam. **11.6 hours** on the
+RTX 4070 at 5,146 to 5,312 tokens/s, 11.4 GB VRAM, CE 1.31 to 0.71.
+
+Its own held-out eval, over the mixture's 97 eval sets and the 73 probe sets:
+
+| split | acc | bal_acc | majority | chance | NLL | Brier | ECE | AURC | acc@80 |
+|---|---|---|---|---|---|---|---|---|---|
+| in_task | 0.743 | 0.738 | 0.366 | 0.325 | 0.594 | 0.331 | 0.071 | 0.158 | 0.792 |
+| heldout | 0.708 | 0.709 | 0.332 | 0.288 | 0.714 | 0.385 | 0.103 | 0.187 | 0.754 |
+
+Balanced accuracy tracks accuracy on both splits, so this is not class-skew.
+
+### JevBench, all 231 public items
+
+| model | all 231 | original | easy | hard | Brier (all) | ECE (all) | Brier (hard) | ECE (hard) | fitted T | paraphrase both-correct |
+|---|---|---|---|---|---|---|---|---|---|---|
+| LFM2.5-1.2B-Base | 0.338 | 0.347 | 0.313 | 0.342 | 0.758 | 0.217 | 0.731 | 0.210 | 2.50 | 0.306 |
+| selectia-1.2b-teacher | 0.628 | 0.708 | 1.000 | 0.414 | 0.558 | 0.193 | 0.894 | 0.343 | 2.50 | 0.583 |
+| **selectia-core-1.2b** | **0.662** | **0.778** | 1.000 | **0.441** | **0.457** | **0.113** | **0.731** | **0.199** | **1.55** | **0.694** |
+| decider-2b (published, 1.9B) | - | - | 1.000 | 0.473 | - | - | 0.806 | 0.322 | - | - |
+
+This is the best result in the project so far on every axis except raw hard-tier accuracy:
+
+- **Accuracy**: 0.662 overall against 0.628 for the teacher-only model and 0.338 for the base. Hard tier
+  0.441, still 3 points behind `decider-2b`'s 0.473.
+- **The teacher model's calibration regression is gone.** Hard-tier ECE was 0.210 for the base and 0.343
+  for the teacher-only run, where training made it confidently wrong. The full mixture brings it to
+  **0.199**, better than the untrained base and better than `decider-2b`'s 0.322. Hard-tier Brier 0.731
+  against `decider-2b`'s 0.806.
+- **The fitted temperature drops to 1.55** from 2.50 for every earlier model, which is the same finding
+  from the other side: there is far less overconfidence left to correct. After the fit, ECE is 0.048.
+- **Paraphrase behaviour is the best yet**: agreement back up to 0.833, matching the base, with the
+  both-correct rate at 0.694 against 0.306 for the base and 0.583 for the teacher model. It is now
+  consistently right rather than consistently wrong.
+
+Per family, the mixture fixed exactly what it was supposed to: `ordinal` 0.75 (from 0.33 at the base,
+which is the isolated-levels training working), `routing` 0.92, `policy` 0.75, `extraction` 0.92,
+`intent` 0.88, `tool_selection` and `fact` both 1.00. Still weak: `multi_hop` 0.33, `temporal_numeric`
+0.33, `long_policy` 0.47, `judge_hard` 0.41, and `ambiguous` 0.00 on only 7 items, which is too small to
+read as a real failure.
+
+Caveats: `decider-2b`'s hard figure is over the full 220-item tier while ours is the 111 public items;
+this checkpoint sets `schema_first` and `isolated_levels` true, so it runs a different layout from the
+base runs; and the probes, batteries and independence suites have not been run yet, so this is the
+regression and JevBench picture only.
+
 ## What is validated so far
 
 - `pytest tests` passes (19 tests): the request/answer layer, the rule data, the prompt layouts and the
