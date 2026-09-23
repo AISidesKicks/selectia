@@ -67,6 +67,15 @@ class Selectia:
             pass
         if temperature is None:
             temperature = float(cfg.get("temperature", 1.0))
+        # Calibration block, written by train.py or scripts/fit_temperature.py. "temperature" scales every
+        # row; "platt" (a*z+b on the log-odds of yes, binary rows only) is the form a scalar cannot replace
+        # when a model ranks well but sits on one side of the threshold.
+        cal = cfg.get("calibration") or {}
+        self.cal = cal if isinstance(cal, dict) else {}
+        self.cal_kind = str(self.cal.get("kind", ""))
+        self.cal_a = float(self.cal.get("a", 1.0)); self.cal_b = float(self.cal.get("b", 0.0))
+        if "temperature" in self.cal:
+            temperature = float(self.cal["temperature"])
         self.neutralize_none = bool(cfg.get("neutralize_none", True))   # v4 and earlier learned the literal string as an abstain signal
         if use_graphs is None:
             use_graphs = False          # the CUDA-graph engine is Phase 5; the eager readout is the default until then
@@ -87,6 +96,25 @@ class Selectia:
         self.T_schema = float(cfg.get("temperature_schema_first", temperature))                # (about 1.5 points on fixed label sets, more elsewhere): opt in with schema()
         self.isolated_levels = bool(cfg.get("isolated_levels", False))      # Score levels judged one per row (v8+)
         self._se = None; self._schemas = {}
+
+    def _to_probs(self, logits, nopts):
+        """Raw slot logits [N,K] + option counts -> probabilities, applying the configured calibration.
+
+        `temperature` is `softmax(z/T)`. `platt` replaces the two-option rows with `sigmoid(a*z+b)` on
+        `z = logit(p_yes) - logit(p_no)` and leaves the multi-option rows on temperature; a binary fit is
+        only ever persisted for genuinely binary heads (noul / YESMOM)."""
+        logits = logits.float()
+        p = torch.softmax(logits / self.T, -1)
+        if self.cal_kind == "platt" and logits.shape[1] >= 2:
+            two = nopts == 2
+            if bool(two.any()):
+                z = logits[:, 1] - logits[:, 0]
+                p1 = torch.sigmoid(self.cal_a * z + self.cal_b)
+                rows = two.nonzero(as_tuple=True)[0]
+                p[rows, 0] = 1.0 - p1[rows]; p[rows, 1] = p1[rows]
+                if logits.shape[1] > 2:
+                    p[rows, 2:] = 0.0
+        return p
 
     def _check_options(self, q):
         n = len(q["options"])
@@ -116,7 +144,7 @@ class Selectia:
             b = collate(items, pad_id(self.m.tok))
             logits = self.m.slot_logits(b["input_ids"].to(self.dev), b["attention_mask"].to(self.dev), b["slot_idx"].to(self.dev),
                                         b["slot_batch"].to(self.dev), b["nopts"].to(self.dev))
-            probs = torch.softmax(logits / self.T, -1).cpu()
+            probs = self._to_probs(logits, b["nopts"].to(self.dev)).cpu()
         out, k = [], 0
         for context, qs in requests:
             res = []
@@ -185,7 +213,7 @@ class Selectia:
                     else:
                         bt = collate(items[i:i + per], pad_id(self.m.tok))
                         lg = self.m.slot_logits(*[bt[k].to(self.dev) for k in ("input_ids", "attention_mask", "slot_idx", "slot_batch", "nopts")])
-                        pr = torch.softmax(lg / self.T, -1).cpu(); c = 0
+                        pr = self._to_probs(lg, bt["nopts"].to(self.dev)).cpu(); c = 0
                         for it in items[i:i + per]:
                             probs.append(pr[c:c + len(it["slots"])]); c += len(it["slots"])
         flatp = [p.tolist() for ps in probs for p in ps]

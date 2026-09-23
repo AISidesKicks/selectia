@@ -91,6 +91,7 @@ def main():
     ap.add_argument("--yesmom", action="store_true", help="YESMOM: Noul-only binary head; marks selectia_config.json")
     ap.add_argument("--isolated_levels", default=None, action=argparse.BooleanOptionalAction, help="Score levels judged one per row (default on; off for --yesmom)")
     ap.add_argument("--temperature", type=float, default=1.0, help="value written to selectia_config.json (fit it in Phase 4)")
+    ap.add_argument("--calibration", default="", help='JSON block written to selectia_config.json, e.g. \'{"kind":"platt","a":1.2,"b":-0.3}\' or \'{"kind":"temperature","temperature":1.55}\'')
     ap.add_argument("--version", default="dev", help="version tag written to selectia_config.json")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
@@ -128,6 +129,8 @@ def main():
         model.lm.save_pretrained(f"{a.out}/model"); tok.save_pretrained(f"{a.out}/model")
         cfg = dict(version=a.version, temperature=a.temperature, model=a.model, max_options=a.max_options,
                    max_ctx=a.max_ctx, isolated_levels=iso, schema_first=a.schema_first_prob > 0)
+        if a.calibration:
+            cfg["calibration"] = json.loads(a.calibration)
         if a.yesmom:
             cfg["yesmom"] = True
         with open(f"{a.out}/model/selectia_config.json", "w") as f:
