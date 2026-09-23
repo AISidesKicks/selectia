@@ -168,7 +168,8 @@ def fit_and_report(records, log, grid=None):
     JevBench fits its reranker temperatures on public items only, and the fitted value is a diagnostic
     here, not part of the official score.
     """
-    grid = grid or [round(0.5 + 0.05 * i, 2) for i in range(41)]
+    grid = grid or [round(0.25 + 0.05 * i, 2) for i in range(196)]     # 0.25 .. 10.0: the untrained bases pinned at the
+                                                                       # old 2.5 ceiling, so the bound was the answer, not the fit
     scorable = [r for r in records if r.get("probs") and r.get("correct") is not None and r.get("valid")]
     if not scorable:
         return None

@@ -468,6 +468,68 @@ this checkpoint sets `schema_first` and `isolated_levels` true, so it runs a dif
 base runs; and the probes, batteries and independence suites have not been run yet, so this is the
 regression and JevBench picture only.
 
+## Temperature on this readout is under-determined (2026-09-23)
+
+Correction to the earlier tables: the temperature search grid in `jevbench_public.py` ran 0.5 to 2.5, and
+**every untrained base reported exactly 2.50, the ceiling**. The bound was the answer, not the fit. With
+the grid extended to 0.25 to 10.0, re-fitting on the saved records gives:
+
+| model | fitted T | Brier raw to fitted | ECE raw to fitted |
+|---|---|---|---|
+| LFM2.5-1.2B-Base | 5.35 | 0.758 to 0.678 | 0.221 to 0.053 |
+| LFM2.5-2.6B-Base | 2.30 | 0.648 to 0.585 | 0.219 to 0.072 |
+| LFM2.5-230M-Base | **10.00 (pinned)** | 0.960 to 0.687 | 0.403 to 0.077 |
+| LFM2.5-350M-Base | **10.00 (pinned)** | 0.830 to 0.687 | 0.264 to 0.056 |
+| selectia-1.2b-teacher | 2.85 | 0.558 to 0.494 | 0.195 to 0.105 |
+| selectia-core-1.2b | 1.55 | 0.457 to 0.432 | 0.134 to 0.060 |
+| yesmom-230m | **10.00 (pinned)** | 0.557 to 0.503 | 0.179 to 0.038 |
+| yesmom-350m | **10.00 (pinned)** | 0.554 to 0.503 | 0.151 to 0.064 |
+
+Four of eight still sit on the ceiling, so their true optimum is higher than 10. Read that as a
+specification problem rather than as "a bit overconfident": the raw output is essentially one-hot, and
+dividing `h` by a large number is a blunt way to fix it.
+
+Why a single scalar is under-specified here:
+
+- **The logit is an inner product with a tied embedding row.** `logits = h . e_k` mixes the direction of
+  `h` with `|h|` and `|e_k|`. Nothing in the base model trained either quantity to be a classifier scale,
+  so the model-to-model spread in T (1.55 to above 10) is mostly a spread in the scale of `h`, not in how
+  confused the model is.
+- **`|h|` drifts with the state.** The hard tier's inputs are 1178 tokens against 92 for the easy tier.
+  A T fitted on short items need not transfer to long ones, and the model sets `schema_first` and
+  `isolated_levels`, so the slot it reads is not the one the base runs read.
+- **Most of the 255 labels are rare.** A single T cannot fix label-specific scale error, which is why the
+  wide table and the narrow `A..J` table want different corrections.
+
+Worth being explicit about the three places where T is **not** a pure calibration knob:
+
+1. **Score items.** The reported `score` is the expected level over the softmax, so T moves the expected
+   value toward the mode. It changes the ordinal output, not just its confidence. Fit T for the metric you
+   ship (ordinal MAE or accuracy on the rounded score), and report which one you used.
+2. **Isolated levels.** With `isolated_levels` on, each level is a binary fit that is then combined and
+   normalised, so T acts non-linearly on the combined distribution. A T fitted listwise does not transfer.
+   Fit it in the same mode you serve.
+3. **Any threshold on confidence.** `abstain_below` and any reranker cutoff move with T. Fix T first, then
+   re-derive the threshold, never the other way round.
+
+Suggestions, in order of how much I would expect them to help:
+
+- **Put the scale into training instead of patching it afterwards.** We already have `--brier_w`, unused at
+  0.0 in every run. The Brier term penalises overconfidence directly, so a short `--brier_w 0.1 / 0.3` sweep
+  should move the fitted T towards 1.0. A model whose own T is already 1.0 needs no post-hoc calibration,
+  which is the actual target; the trained core model wanting T = 1.55 against the untrained 230M wanting
+  more than 10 is evidence that training is already teaching this.
+- **Decouple scale from direction.** Replace `logits = h . e_k / T` with `logits = s * cos(h, e_k)`, that
+  is, L2-normalise both sides and learn a single gain `s`. Then `|h|` cannot leak into confidence and `s` is
+  comparable across models and lengths. It is a two-line change in `slot_logits` and CE will fit `s`.
+- **Fit T per output shape and per family, not globally**: choice, noul, score, and isolated differ, and
+  the eight checkpoints already show a range of 1.55 to above 10 within one codebase.
+- **Vector scaling** (per-label gain and bias, `w_k z_k + b_k`) is the textbook upgrade from a scalar, but
+  with 255 labels and most of them rare it needs regularisation or grouping by label frequency. Group the
+  narrow `A..J` labels separately from the two-letter ones.
+- **Always fit on held-out items, and check the transfer**: fit T on hard and evaluate on easy and the
+  reverse. If those disagree, one scalar is the wrong model of the error.
+
 ## What is validated so far
 
 - `pytest tests` passes (19 tests): the request/answer layer, the rule data, the prompt layouts and the
