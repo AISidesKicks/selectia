@@ -530,6 +530,37 @@ Suggestions, in order of how much I would expect them to help:
 - **Always fit on held-out items, and check the transfer**: fit T on hard and evaluate on easy and the
   reverse. If those disagree, one scalar is the wrong model of the error.
 
+## Where the temperature error actually lives (2026-09-23)
+
+`scripts/fit_temperature.py` fits one temperature on half the items by NLL and scores the other half, with a
+grid out to 50 so the bound cannot be the answer. Run on `yesmom-230m` over the mixture's 19 held-out Noul
+sets (6,000 items), against the 74 JevBench Noul items as a second, out-of-distribution source:
+
+| source | n | ECE@1 | ECE@T_in | ECE@T_ood | Brier@1 | Brier@T_in | Brier@T_ood |
+|---|---|---|---|---|---|---|---|
+| in-domain (mixture sets) | 3,000 | 0.119 | **0.083** | 0.078 | 0.476 | **0.458** | 0.497 |
+| JevBench Noul (OOD) | 74 | 0.179 | 0.139 | **0.029** | 0.557 | 0.528 | 0.501 |
+
+in-domain fit T = 1.69, JevBench fit T = 50.0 (pinned again).
+
+**The JevBench result is not a calibration, it is a flattening.** A uniform binary predictor scores a
+Brier of exactly 0.5, and the T = 50 column sits at 0.501 on JevBench while its ECE looks excellent at
+0.029. Temperature scaling on a set where the model is near chance will always prefer to flatten, which
+destroys the signal and lowers ECE simultaneously. Two conclusions:
+
+1. **Fit and report by NLL or Brier, never by ECE alone.** ECE is not a proper scoring rule and is
+   minimised by an uninformative predictor. This is the single most useful finding of the exercise.
+2. **The temperature is not the problem.** On the distribution the model was trained for, it wants
+   T = 1.69 and Brier 0.458, which is real information over the 0.5 uniform baseline. On JevBench's Noul
+   items its Brier is 0.528, essentially uniform, so the honest statement is that its probabilities carry
+   almost no information there and no scalar repairs that. This also explains the earlier table where four
+   of eight checkpoints pinned at a T above 10: those were out-of-distribution fits.
+
+So the practical guidance for this model is: calibrate on the deployment distribution, report Brier and
+NLL, treat a pinned T as a symptom of OOD rather than as a calibration result, and keep the earlier
+structural suggestions (a Brier term in training, and decoupling scale from direction with a cosine
+readout) as the ways to improve the underlying scale rather than the post-hoc patch.
+
 ## What is validated so far
 
 - `pytest tests` passes (19 tests): the request/answer layer, the rule data, the prompt layouts and the
