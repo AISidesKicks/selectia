@@ -299,9 +299,18 @@ Two licences, deliberately split, because code and weights are not the same thin
 - **Model derivatives** of the LFM2.5 base models are under the **LFM Open License v1.0**, which is not an
   OSI open-source licence: it limits commercial use above a revenue threshold (10M USD of annual revenue)
   and requires redistributing the licence text. Full text: `MODEL-LICENSE`.
+- **Training data is not all permissive, so the trained weights are not simply "LFM weights".** A licence
+  audit of the task registry (`scripts/licence_audit.py`, table in `selectia/data/task_licences.json`)
+  found two datasets in the `core` mixture that are **CC-BY-NC-4.0** and therefore non-commercial:
+  `Tobi-Bueck/customer-support-tickets` (the `support_tickets` task) and `lmsys/toxic-chat` (the
+  `toxic_chat` task). `selectia-core-1.2b` is trained on both, so that checkpoint inherits a
+  **non-commercial restriction** on top of the LFM licence. The YESMOM checkpoints do not use either task
+  directly, but their mixture draws on the same `tasks.pkl`, so treat the same restriction as the safe
+  default until the mixture is rebuilt without them. Several more tasks are share-alike (CC-BY-SA) or have
+  no declared licence on the Hub; the full per-task breakdown is in the table.
 
 The base weights are downloaded from Hugging Face and their licence travels with them. See `LICENSE` for
-the pointer to both.
+the pointer to both. The audit is the authoritative list; this paragraph is the summary.
 
 ## Releases
 

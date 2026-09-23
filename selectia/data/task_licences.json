@@ -1,0 +1,794 @@
+{
+ "abstain_probe": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": null,
+  "source": "no_external_dataset",
+  "trained": false
+ },
+ "ade": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "SetFit/ade_corpus_v2_classification",
+  "source": "none",
+  "trained": false
+ },
+ "ag_news": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "fancyzhx/ag_news",
+  "source": "card_data",
+  "trained": true
+ },
+ "agenttraj": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "AgentGym/AgentTraj-L",
+  "source": "none",
+  "trained": true
+ },
+ "amazon_stars": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "apache-2.0",
+  "repo": "SetFit/amazon_reviews_multi_en",
+  "source": "card_data",
+  "trained": true
+ },
+ "arc": {
+  "class_": "copyleft",
+  "heldout": false,
+  "licence": "cc-by-sa-4.0",
+  "repo": "allenai/ai2_arc",
+  "source": "card_data",
+  "trained": true
+ },
+ "arena_pref": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "apache-2.0",
+  "repo": "lmarena-ai/arena-human-preference-55k",
+  "source": "card_data",
+  "trained": false
+ },
+ "banking77": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "mit",
+  "repo": "mteb/banking77",
+  "source": "card_data",
+  "trained": true
+ },
+ "bbc_news": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "SetFit/bbc-news",
+  "source": "none",
+  "trained": false
+ },
+ "bias_in_bios": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "mit",
+  "repo": "LabHC/bias_in_bios",
+  "source": "card_data",
+  "trained": true
+ },
+ "bitext_support": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "cdla-sharing-1.0",
+  "repo": "bitext/Bitext-customer-support-llm-chatbot-training-dataset",
+  "source": "card_data",
+  "trained": true
+ },
+ "boolq": {
+  "class_": "copyleft",
+  "heldout": false,
+  "licence": "cc-by-sa-3.0",
+  "repo": "google/boolq",
+  "source": "card_data",
+  "trained": true
+ },
+ "cb": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": "other",
+  "repo": "aps/super_glue",
+  "source": "card_data",
+  "trained": false
+ },
+ "civil_comments": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc0-1.0",
+  "repo": "google/civil_comments",
+  "source": "card_data",
+  "trained": true
+ },
+ "clinc_oos": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc-by-3.0",
+  "repo": "clinc/clinc_oos",
+  "source": "card_data",
+  "trained": true
+ },
+ "cola": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "nyu-mll/glue",
+  "source": "card_data",
+  "trained": true
+ },
+ "commonsense_qa": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "mit",
+  "repo": "tau/commonsense_qa",
+  "source": "card_data",
+  "trained": true
+ },
+ "copa": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "aps/super_glue",
+  "source": "card_data",
+  "trained": true
+ },
+ "counterfactual": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/amazon_counterfactual_en",
+  "source": "none",
+  "trained": true
+ },
+ "cr_reviews": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "SetFit/SentEval-CR",
+  "source": "none",
+  "trained": false
+ },
+ "dbpedia": {
+  "class_": "copyleft",
+  "heldout": false,
+  "licence": "cc-by-sa-3.0",
+  "repo": "fancyzhx/dbpedia_14",
+  "source": "card_data",
+  "trained": true
+ },
+ "dbpedia_l2": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "cc0-1.0",
+  "repo": "DeveloperOats/DBPedia_Classes",
+  "source": "card_data",
+  "trained": false
+ },
+ "dbpedia_l3": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "cc0-1.0",
+  "repo": "DeveloperOats/DBPedia_Classes",
+  "source": "card_data",
+  "trained": false
+ },
+ "dolly_category": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "argilla/databricks-dolly-15k-curated-en",
+  "source": "none",
+  "trained": false
+ },
+ "emotion": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "dair-ai/emotion",
+  "source": "card_data",
+  "trained": true
+ },
+ "enron_spam": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/enron_spam",
+  "source": "none",
+  "trained": true
+ },
+ "fever": {
+  "class_": "copyleft",
+  "heldout": false,
+  "licence": "cc-by-sa-3.0, gpl-3.0",
+  "repo": "copenlu/fever_gold_evidence",
+  "source": "card_data",
+  "trained": true
+ },
+ "fin_phrasebank": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "AdaptLLM/finance-tasks",
+  "source": "none",
+  "trained": false
+ },
+ "fin_sentiment": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "mit",
+  "repo": "zeroshot/twitter-financial-news-sentiment",
+  "source": "card_data",
+  "trained": false
+ },
+ "games": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": null,
+  "source": "no_external_dataset",
+  "trained": true
+ },
+ "glaive_tools": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "apache-2.0",
+  "repo": "glaiveai/glaive-function-calling-v2",
+  "source": "card_data",
+  "trained": true
+ },
+ "go_emotions": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "apache-2.0",
+  "repo": "google-research-datasets/go_emotions",
+  "source": "card_data",
+  "trained": true
+ },
+ "hate_offensive": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/hate_speech_offensive",
+  "source": "none",
+  "trained": true
+ },
+ "hate_speech_scales": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc-by-4.0",
+  "repo": "ucberkeley-dlab/measuring-hate-speech",
+  "source": "card_data",
+  "trained": true
+ },
+ "hellaswag": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "Rowan/hellaswag",
+  "source": "none",
+  "trained": true
+ },
+ "helpsteer2": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc-by-4.0",
+  "repo": "nvidia/HelpSteer2",
+  "source": "card_data",
+  "trained": true
+ },
+ "helpsteer3_pref": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc-by-4.0",
+  "repo": "nvidia/HelpSteer3",
+  "source": "card_data",
+  "trained": true
+ },
+ "hermes_tools": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "apache-2.0",
+  "repo": "NousResearch/hermes-function-calling-v1",
+  "source": "card_data",
+  "trained": false
+ },
+ "hh_rlhf": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "mit",
+  "repo": "Anthropic/hh-rlhf",
+  "source": "card_data",
+  "trained": true
+ },
+ "hwu64": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "FastFit/hwu_64",
+  "source": "none",
+  "trained": false
+ },
+ "imdb": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "stanfordnlp/imdb",
+  "source": "card_data",
+  "trained": true
+ },
+ "insincere_questions": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/insincere-questions",
+  "source": "none",
+  "trained": true
+ },
+ "liar2": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "apache-2.0",
+  "repo": "chengxuphd/liar2",
+  "source": "card_data",
+  "trained": true
+ },
+ "mario": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": null,
+  "source": "no_external_dataset",
+  "trained": true
+ },
+ "massive_intent": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/amazon_massive_intent_en-US",
+  "source": "none",
+  "trained": true
+ },
+ "massive_scenario": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "SetFit/amazon_massive_scenario_en-US",
+  "source": "none",
+  "trained": false
+ },
+ "medmcqa": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "apache-2.0",
+  "repo": "openlifescienceai/medmcqa",
+  "source": "card_data",
+  "trained": true
+ },
+ "medqa": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc-by-4.0",
+  "repo": "GBaker/MedQA-USMLE-4-options",
+  "source": "card_data",
+  "trained": true
+ },
+ "mind2web": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc-by-4.0",
+  "repo": "osunlp/Mind2Web",
+  "source": "card_data",
+  "trained": true
+ },
+ "mmlu": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "mit",
+  "repo": "cais/mmlu",
+  "source": "card_data",
+  "trained": true
+ },
+ "mnli": {
+  "class_": "copyleft",
+  "heldout": false,
+  "licence": "cc-by-3.0, cc-by-sa-3.0, mit, other",
+  "repo": "nyu-mll/multi_nli",
+  "source": "card_data",
+  "trained": true
+ },
+ "mrpc": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "nyu-mll/glue",
+  "source": "card_data",
+  "trained": true
+ },
+ "msmarco_rel": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "microsoft/ms_marco",
+  "source": "none",
+  "trained": true
+ },
+ "multirc": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "aps/super_glue",
+  "source": "card_data",
+  "trained": true
+ },
+ "newsgroups": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/20_newsgroups",
+  "source": "none",
+  "trained": true
+ },
+ "offtopic_probe": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": null,
+  "source": "no_external_dataset",
+  "trained": false
+ },
+ "openbookqa": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "allenai/openbookqa",
+  "source": "card_data",
+  "trained": true
+ },
+ "paws": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": "other",
+  "repo": "google-research-datasets/paws",
+  "source": "card_data",
+  "trained": false
+ },
+ "piqa": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "ybisk/piqa",
+  "source": "card_data",
+  "trained": true
+ },
+ "prosocial_safety": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc-by-4.0",
+  "repo": "allenai/prosocial-dialog",
+  "source": "card_data",
+  "trained": true
+ },
+ "pubmedqa": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "mit",
+  "repo": "qiaojin/PubMedQA",
+  "source": "card_data",
+  "trained": false
+ },
+ "qasc": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "cc-by-4.0",
+  "repo": "allenai/qasc",
+  "source": "card_data",
+  "trained": true
+ },
+ "qnli": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "nyu-mll/glue",
+  "source": "card_data",
+  "trained": true
+ },
+ "qqp": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "nyu-mll/glue",
+  "source": "card_data",
+  "trained": true
+ },
+ "quality": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "emozilla/quality",
+  "source": "none",
+  "trained": false
+ },
+ "quality_full": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "emozilla/quality",
+  "source": "none",
+  "trained": false
+ },
+ "race": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "ehovy/race",
+  "source": "card_data",
+  "trained": true
+ },
+ "reward_bench": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "odc-by",
+  "repo": "allenai/reward-bench",
+  "source": "card_data",
+  "trained": false
+ },
+ "rte": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "nyu-mll/glue",
+  "source": "card_data",
+  "trained": true
+ },
+ "sciq": {
+  "class_": "noncommercial",
+  "heldout": true,
+  "licence": "cc-by-nc-3.0",
+  "repo": "allenai/sciq",
+  "source": "card_data",
+  "trained": false
+ },
+ "shp": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "stanfordnlp/shp",
+  "source": "none",
+  "trained": true
+ },
+ "sms_spam": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "ucirvine/sms_spam",
+  "source": "card_data",
+  "trained": true
+ },
+ "snli": {
+  "class_": "copyleft",
+  "heldout": false,
+  "licence": "cc-by-sa-4.0",
+  "repo": "stanfordnlp/snli",
+  "source": "card_data",
+  "trained": true
+ },
+ "social_iqa": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "allenai/social_i_qa",
+  "source": "none",
+  "trained": false
+ },
+ "sst2": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "stanfordnlp/sst2",
+  "source": "card_data",
+  "trained": true
+ },
+ "sst5": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/sst5",
+  "source": "none",
+  "trained": true
+ },
+ "strategyqa": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "mit",
+  "repo": "ChilleD/StrategyQA",
+  "source": "card_data",
+  "trained": false
+ },
+ "stsb": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/stsb",
+  "source": "none",
+  "trained": true
+ },
+ "student_questions": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "SetFit/student-question-categories",
+  "source": "none",
+  "trained": false
+ },
+ "subjectivity": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "SetFit/subj",
+  "source": "none",
+  "trained": true
+ },
+ "support_tickets": {
+  "class_": "noncommercial",
+  "heldout": false,
+  "licence": "cc-by-nc-4.0",
+  "repo": "Tobi-Bueck/customer-support-tickets",
+  "source": "card_data",
+  "trained": true
+ },
+ "synth": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": null,
+  "source": "no_external_dataset",
+  "trained": true
+ },
+ "toolace": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "apache-2.0",
+  "repo": "Team-ACE/ToolACE",
+  "source": "card_data",
+  "trained": true
+ },
+ "toxic_chat": {
+  "class_": "noncommercial",
+  "heldout": false,
+  "licence": "cc-by-nc-4.0",
+  "repo": "lmsys/toxic-chat",
+  "source": "card_data",
+  "trained": true
+ },
+ "trec": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "SetFit/TREC-QC",
+  "source": "none",
+  "trained": false
+ },
+ "trec_fine": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": null,
+  "repo": "SetFit/TREC-QC",
+  "source": "none",
+  "trained": false
+ },
+ "truthfulqa": {
+  "class_": "commercial_ok",
+  "heldout": true,
+  "licence": "apache-2.0",
+  "repo": "truthfulqa/truthful_qa",
+  "source": "card_data",
+  "trained": false
+ },
+ "tweet_emotion": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "cardiffnlp/tweet_eval",
+  "source": "card_data",
+  "trained": true
+ },
+ "tweet_hate": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "cardiffnlp/tweet_eval",
+  "source": "card_data",
+  "trained": true
+ },
+ "tweet_irony": {
+  "class_": "unknown",
+  "heldout": true,
+  "licence": "unknown",
+  "repo": "cardiffnlp/tweet_eval",
+  "source": "card_data",
+  "trained": false
+ },
+ "tweet_offensive": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "cardiffnlp/tweet_eval",
+  "source": "card_data",
+  "trained": true
+ },
+ "tweet_sentiment": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "cardiffnlp/tweet_eval",
+  "source": "card_data",
+  "trained": true
+ },
+ "ultrafeedback_pref": {
+  "class_": "commercial_ok",
+  "heldout": false,
+  "licence": "mit",
+  "repo": "HuggingFaceH4/ultrafeedback_binarized",
+  "source": "card_data",
+  "trained": true
+ },
+ "wic": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "aps/super_glue",
+  "source": "card_data",
+  "trained": true
+ },
+ "wiki_qa": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "microsoft/wiki_qa",
+  "source": "card_data",
+  "trained": true
+ },
+ "winogrande": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": null,
+  "repo": "allenai/winogrande",
+  "source": "none",
+  "trained": true
+ },
+ "xstory_cloze": {
+  "class_": "copyleft",
+  "heldout": true,
+  "licence": "cc-by-sa-4.0",
+  "repo": "juletxara/xstory_cloze",
+  "source": "card_data",
+  "trained": false
+ },
+ "yahoo_topics": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "unknown",
+  "repo": "community-datasets/yahoo_answers_topics",
+  "source": "card_data",
+  "trained": true
+ },
+ "yelp": {
+  "class_": "unknown",
+  "heldout": false,
+  "licence": "other",
+  "repo": "Yelp/yelp_review_full",
+  "source": "card_data",
+  "trained": true
+ }
+}
